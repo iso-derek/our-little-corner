@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <title>Our Game Room</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-page="game">
+  <header class="site-header">
+    <a class="brand" href="index.html">Princess + Frog</a>
+    <nav class="nav" aria-label="Main navigation">
+      <a href="index.html">Home 🏠</a>
+      <a href="letters.html">Open When Letters 💌</a>
+      <a href="memories.html">Memory Wall 📸</a>
+      <a href="badges.html">Badges 🏆</a>
+      <a href="game.html">Game Room 🎮</a>
+      <a href="messages.html">Our Chat 💬</a>
+      <a href="gifts.html">Gifts 🎁</a>
+      <a href="quotes.html">Things We Said 🗣️</a>
+      <a href="love.html">Love Notes 💕</a>
+    </nav>
+  </header>
+
+  <main class="page game-page">
+    <section class="page-title game-room-title">
+      <p class="eyebrow">Two players, one little corner</p>
+      <h1>Our Game Room 🎮</h1>
+      <p>Pick who you are once, choose a game, and play together from separate devices.</p>
+    </section>
+
+    <section class="game-identity-bar" aria-label="Player and connection status">
+      <label>Playing as
+        <select id="gameIdentity">
+          <option value="frog">Frog 🐸</option>
+          <option value="princess">Princess 👑</option>
+        </select>
+      </label>
+      <div class="presence-list" aria-live="polite">
+        <span class="presence-pill" id="frogPresence"><i></i> Frog is away</span>
+        <span class="presence-pill" id="princessPresence"><i></i> Princess is away</span>
+      </div>
+    </section>
+
+    <div class="game-tabs" role="tablist" aria-label="Choose a game">
+      <button class="game-tab active" id="numberTab" type="button" role="tab" aria-selected="true" aria-controls="numberGamePanel" data-game-tab="number">🔢 Guess Number</button>
+      <button class="game-tab" id="wordTab" type="button" role="tab" aria-selected="false" aria-controls="wordGamePanel" data-game-tab="word">🔤 Secret Word</button>
+      <button class="game-tab" id="sameTab" type="button" role="tab" aria-selected="false" aria-controls="sameGamePanel" data-game-tab="same">💕 Same Page</button>
+    </div>
+
+    <section class="game-mode-panel" id="numberGamePanel" role="tabpanel" aria-labelledby="numberTab">
+      <div class="game-panel-heading">
+        <div>
+          <p class="eyebrow">Higher or lower</p>
+          <h2>Guess My Number</h2>
+        </div>
+        <p>One person sets the secret. The other follows the live clues.</p>
+      </div>
+      <div class="game-status-grid">
+        <div class="game-status-card"><span>Round</span><strong id="roundStatus">Waiting for host</strong></div>
+        <div class="game-status-card"><span>Host</span><strong id="hostStatus">Not chosen</strong></div>
+        <div class="game-status-card"><span>Guesser</span><strong id="guesserStatus">Not chosen</strong></div>
+        <div class="game-status-card"><span>Attempts</span><strong id="attemptsText">0</strong></div>
+      </div>
+      <div class="game-workspace">
+        <div class="host-panel">
+          <h3>Host a round</h3>
+          <label>Range
+            <select id="gameRange">
+              <option value="50">1 to 50</option>
+              <option value="100" selected>1 to 100</option>
+              <option value="500">1 to 500</option>
+            </select>
+          </label>
+          <label>Secret number
+            <input id="secretNumber" type="number" min="1" max="100" inputmode="numeric" placeholder="Set it quietly">
+          </label>
+          <button class="btn primary" id="setSecret" type="button">Start round 💗</button>
+          <p class="game-secret" id="secretStatus">Choose your secret number to host.</p>
+        </div>
+        <div class="guess-panel">
+          <h3>Make a guess</h3>
+          <p class="game-secret" id="guessHelp">Wait for a host to start a round.</p>
+          <label>Your guess
+            <input id="guessNumber" type="number" min="1" max="100" inputmode="numeric" placeholder="Take a guess">
+          </label>
+          <button class="btn primary" id="checkGuess" type="button">Submit guess</button>
+        </div>
+      </div>
+      <p class="game-result" id="gameResult" aria-live="polite">Waiting for a brave guess.</p>
+      <div class="game-footer">
+        <div class="compact-scoreboard" aria-label="Number game scoreboard">
+          <span>Frog <strong id="frogScore">0</strong></span>
+          <span>Princess <strong id="princessScore">0</strong></span>
+        </div>
+        <div class="button-row">
+          <button class="btn" id="resetGame" type="button">New round</button>
+          <button class="btn quiet-btn" id="resetScores" type="button">Reset scores</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="game-mode-panel" id="wordGamePanel" role="tabpanel" aria-labelledby="wordTab" hidden>
+      <div class="game-panel-heading">
+        <div>
+          <p class="eyebrow">Secret word duel</p>
+          <h2>Common Letters</h2>
+        </div>
+        <p>Every guess reveals how many letters appear in the secret word.</p>
+      </div>
+      <div class="game-status-grid">
+        <div class="game-status-card"><span>Round</span><strong id="wordRoundStatus">Waiting for host</strong></div>
+        <div class="game-status-card"><span>Host</span><strong id="wordHostStatus">Not chosen</strong></div>
+        <div class="game-status-card"><span>Guesser</span><strong id="wordGuesserStatus">Not chosen</strong></div>
+        <div class="game-status-card"><span>Attempts</span><strong id="wordAttemptsText">0</strong></div>
+      </div>
+      <div class="game-workspace">
+        <div class="host-panel">
+          <h3>Host a word round</h3>
+          <label>Difficulty
+            <select id="wordLength">
+              <option value="3" selected>3-letter word game</option>
+              <option value="4">4-letter word game (increased difficulty)</option>
+            </select>
+          </label>
+          <label>Secret word
+            <input id="secretWord" type="text" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="e.g. LOVE">
+          </label>
+          <button class="btn primary" id="setSecretWord" type="button">Start word round 💗</button>
+          <p class="game-secret" id="wordSecretStatus">Choose 3 letters for a quicker game, or 4 for a challenge.</p>
+        </div>
+        <div class="guess-panel">
+          <h3>Guess the word</h3>
+          <p class="game-secret" id="wordGuessHelp">Wait for a host to start a word round.</p>
+          <label>Your word guess
+            <input id="wordGuess" type="text" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="Type your word">
+          </label>
+          <button class="btn primary" id="checkWordGuess" type="button">Submit word</button>
+        </div>
+      </div>
+      <p class="game-result" id="wordGameResult" aria-live="polite">Waiting for a secret word.</p>
+      <div class="word-history" id="wordHistory"></div>
+      <div class="game-footer">
+        <div class="compact-scoreboard" aria-label="Word game scoreboard">
+          <span>Frog <strong id="frogWordScore">0</strong></span>
+          <span>Princess <strong id="princessWordScore">0</strong></span>
+        </div>
+        <div class="button-row">
+          <button class="btn" id="resetWordGame" type="button">New round</button>
+          <button class="btn quiet-btn" id="resetWordScores" type="button">Reset scores</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="game-mode-panel" id="sameGamePanel" role="tabpanel" aria-labelledby="sameTab" hidden>
+      <div class="game-panel-heading">
+        <div>
+          <p class="eyebrow">Choose before the reveal</p>
+          <h2>Same Page</h2>
+        </div>
+        <p>You both answer the same question. Choices reveal only after both players lock in.</p>
+      </div>
+      <div class="game-status-grid same-status-grid">
+        <div class="game-status-card"><span>Round</span><strong id="sameRoundStatus">Ready</strong></div>
+        <div class="game-status-card"><span>Frog</span><strong id="sameFrogStatus">Waiting</strong></div>
+        <div class="game-status-card"><span>Princess</span><strong id="samePrincessStatus">Waiting</strong></div>
+        <div class="game-status-card"><span>Matches</span><strong id="sameMatchScore">0 / 0</strong></div>
+      </div>
+      <div class="same-question" id="sameQuestionArea">
+        <p class="eyebrow">This or that</p>
+        <h3 id="sameQuestion">Press “New question” to begin.</h3>
+        <div class="same-options" aria-label="Answer choices">
+          <button class="same-option" id="sameOptionA" type="button" disabled>Option A</button>
+          <button class="same-option" id="sameOptionB" type="button" disabled>Option B</button>
+        </div>
+        <p class="game-result" id="sameResult" aria-live="polite">Your choices stay hidden until you have both answered.</p>
+      </div>
+      <div class="game-footer">
+        <div></div>
+        <div class="button-row">
+          <button class="btn primary" id="nextSameQuestion" type="button">New question</button>
+          <button class="btn quiet-btn" id="resetSameGame" type="button">Reset matches</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

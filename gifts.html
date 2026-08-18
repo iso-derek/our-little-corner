@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <title>Gifts Corner</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-page="gifts">
+  <header class="site-header">
+    <a class="brand" href="index.html">Princess + Frog</a>
+    <nav class="nav">
+      <a href="index.html">Home 🏠</a>
+      <a href="letters.html">Open When Letters 💌</a>
+      <a href="memories.html">Memory Wall 📸</a>
+      <a href="badges.html">Badges 🏆</a>
+      <a href="game.html">Game Room 🎮</a>
+      <a href="messages.html">Our Chat 💬</a>
+      <a href="gifts.html">Gifts 🎁</a>
+      <a href="quotes.html">Things We Said 🗣️</a>
+      <a href="love.html">Love Notes 💕</a>
+    </nav>
+  </header>
+
+  <main class="page">
+    <section class="page-title">
+      <p class="eyebrow">Soft surprises</p>
+      <h1>Gifts Corner 🎁💕</h1>
+      <p>Little things I got for my princess because she deserves softness, surprises, and love.</p>
+    </section>
+    <form class="collection-composer" id="giftForm">
+      <label>Gift name
+        <input id="newGiftTitle" type="text" maxlength="100" placeholder="Name this gift" required>
+      </label>
+      <label>Date
+        <input id="newGiftDate" type="text" maxlength="50" placeholder="Add a date">
+      </label>
+      <button class="btn primary" type="submit">Add gift</button>
+    </form>
+    <section class="gift-grid" id="giftGrid"></section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <title>Our Chat</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-page="messages">
+  <header class="site-header">
+    <a class="brand" href="index.html">Princess + Frog</a>
+    <nav class="nav" aria-label="Main navigation">
+      <a href="index.html">Home 🏠</a>
+      <a href="letters.html">Open When Letters 💌</a>
+      <a href="memories.html">Memory Wall 📸</a>
+      <a href="badges.html">Badges 🏆</a>
+      <a href="game.html">Game Room 🎮</a>
+      <a href="messages.html">Our Chat 💬</a>
+      <a href="gifts.html">Gifts 🎁</a>
+      <a href="quotes.html">Things We Said 🗣️</a>
+      <a href="love.html">Love Notes 💕</a>
+    </nav>
+  </header>
+
+  <main class="page messages-page">
+    <section class="page-title">
+      <p class="eyebrow">Just between us</p>
+      <h1>Our Chat 💬</h1>
+      <p>Leave a thought, a tiny update, or something sweet for the other person to find.</p>
+    </section>
+
+    <form class="message-composer" id="messageForm">
+      <label class="message-sender">Sending as
+        <select id="messageSender">
+          <option value="frog">Frog 🐸</option>
+          <option value="princess">Princess 👑</option>
+        </select>
+      </label>
+      <label class="message-input">
+        <span class="sr-only">Message</span>
+        <textarea id="messageInput" maxlength="500" placeholder="Write something for your person…" required></textarea>
+      </label>
+      <div class="message-compose-footer">
+        <small><span id="messageCount">0</span> / 500</small>
+        <button class="btn primary" type="submit">Send 💕</button>
+      </div>
+    </form>
+
+    <div class="message-live-row">
+      <span class="presence-pill online"><i></i> Live shared board</span>
+      <button class="btn quiet-btn" id="clearMessages" type="button">Clear all</button>
+    </div>
+    <section class="message-list" id="messageList" aria-live="polite"></section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

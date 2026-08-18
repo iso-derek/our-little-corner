@@ -1,0 +1,5 @@
+DEPLOY.md
+SETUP-SHARED.md
+supabase-setup.sql
+netlify.toml
+vercel.json

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <title>Love Notes</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-page="love">
+  <header class="site-header">
+    <a class="brand" href="index.html">Princess + Frog</a>
+    <nav class="nav">
+      <a href="index.html">Home 🏠</a>
+      <a href="letters.html">Open When Letters 💌</a>
+      <a href="memories.html">Memory Wall 📸</a>
+      <a href="badges.html">Badges 🏆</a>
+      <a href="game.html">Game Room 🎮</a>
+      <a href="messages.html">Our Chat 💬</a>
+      <a href="gifts.html">Gifts 🎁</a>
+      <a href="quotes.html">Things We Said 🗣️</a>
+      <a href="love.html">Love Notes 💕</a>
+    </nav>
+  </header>
+
+  <main class="page narrow">
+    <section class="page-title">
+      <p class="eyebrow">Sweet on demand</p>
+      <h1>Love Notes 💕</h1>
+      <p>Save the soft stuff, then pull a random note whenever the princess needs one.</p>
+    </section>
+
+    <section class="love-generator">
+      <button class="btn primary" data-random-love>Random love note</button>
+      <p class="random-output" id="loveRandomNote" aria-live="polite"></p>
+    </section>
+    <section class="add-panel">
+      <input id="loveInput" type="text" placeholder="Add a new love note">
+      <button class="btn primary" id="addLoveNote" type="button">Add note</button>
+    </section>
+    <section class="note-list" id="loveNoteList"></section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

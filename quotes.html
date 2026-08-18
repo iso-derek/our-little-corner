@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <title>Things We Said</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-page="quotes">
+  <header class="site-header">
+    <a class="brand" href="index.html">Princess + Frog</a>
+    <nav class="nav">
+      <a href="index.html">Home 🏠</a>
+      <a href="letters.html">Open When Letters 💌</a>
+      <a href="memories.html">Memory Wall 📸</a>
+      <a href="badges.html">Badges 🏆</a>
+      <a href="game.html">Game Room 🎮</a>
+      <a href="messages.html">Our Chat 💬</a>
+      <a href="gifts.html">Gifts 🎁</a>
+      <a href="quotes.html">Things We Said 🗣️</a>
+      <a href="love.html">Love Notes 💕</a>
+    </nav>
+  </header>
+
+  <main class="page narrow">
+    <section class="page-title">
+      <p class="eyebrow">Our little lines</p>
+      <h1>Things We Said 🗣️💕</h1>
+      <p>Funny, cute, and dangerously sweet quotes from our corner.</p>
+    </section>
+
+    <section class="add-panel">
+      <input id="quoteInput" type="text" placeholder="Add a quote">
+      <button class="btn primary" id="addQuote" type="button">Add quote</button>
+    </section>
+    <section class="quote-list" id="quoteList"></section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

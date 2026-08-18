@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <title>Princess and the Frog's Corner</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-page="home">
+  <header class="site-header">
+    <a class="brand" href="index.html">Princess + Frog</a>
+    <nav class="nav">
+      <a href="index.html">Home 🏠</a>
+      <a href="letters.html">Open When Letters 💌</a>
+      <a href="memories.html">Memory Wall 📸</a>
+      <a href="badges.html">Badges 🏆</a>
+      <a href="game.html">Game Room 🎮</a>
+      <a href="messages.html">Our Chat 💬</a>
+      <a href="gifts.html">Gifts 🎁</a>
+      <a href="quotes.html">Things We Said 🗣️</a>
+      <a href="love.html">Love Notes 💕</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Our private little fairytale</p>
+        <h1>Welcome to Princess and the Frog's Corner 🐸👑</h1>
+        <p>This is our soft little corner for memories, open when letters, games, badges, gifts, love notes, and all the tiny things that make us us.</p>
+        <div class="hero-actions">
+          <button class="btn primary" data-random-love>Random Love Note 💕</button>
+          <a class="btn" href="memories.html">Visit Memory Wall 📸</a>
+        </div>
+        <p class="random-output" id="homeRandomNote" aria-live="polite"></p>
+      </div>
+      <div class="milestone-card">
+        <span class="sparkle">💕</span>
+        <h2>She said yes</h2>
+        <p class="date-pill">21 June</p>
+        <p>The day I asked you out and our story became even more special.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-heading">
+        <p class="eyebrow">The important day</p>
+        <h2>She Said Yes 💕</h2>
+      </div>
+      <div class="milestone-wide june21-story">
+        <div class="june21-copy">
+          <p class="date-pill">21 June</p>
+          <h3>The day she said yes</h3>
+          <p>On the 21st of June, I asked you out, and that day became one of my favourite memories. Flowers, kind of rushed planning 😭, but a very beautiful and monumental moment to me. One very important question, and the best yes I've heard.</p>
+          <p class="june21-signoff">The beginning of our favourite chapter. 💕</p>
+        </div>
+        <div class="june21-gallery" aria-label="Photos from 21 June">
+          <figure class="june21-photo featured">
+            <img src="images/june21-flowers.png" alt="Princess holding her flowers and pink rose bear" data-story-title="Flowers, the rose bear, and her smile">
+            <figcaption>Flowers and her smile</figcaption>
+          </figure>
+          <figure class="june21-photo">
+            <img src="images/june21-painting.png" alt="Princess holding up a handmade heart painting" data-story-title="A handmade moment">
+            <figcaption>A handmade moment</figcaption>
+          </figure>
+          <figure class="june21-photo">
+            <img src="images/june21-surprise.png" alt="Princess seeing the red balloon surprise" data-story-title="The surprise">
+            <figcaption>The surprise</figcaption>
+          </figure>
+          <figure class="june21-photo">
+            <img src="images/june21-question.png" alt="Frog wearing the will you be my girlfriend shirt" data-story-title="The question">
+            <figcaption>The question</figcaption>
+          </figure>
+          <figure class="june21-photo">
+            <img src="images/june21-yes.png" alt="The girlfriend proposal shirt with yes checked" data-story-title="She checked yes">
+            <figcaption>She checked yes 💕</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-heading">
+        <p class="eyebrow">Choose a corner</p>
+        <h2>Little places for our story</h2>
+      </div>
+      <div class="feature-grid">
+        <a class="feature-card" href="letters.html"><span>💌</span><strong>Open When Letters</strong><small>Notes for every mood.</small></a>
+        <a class="feature-card" href="memories.html"><span>📸</span><strong>Memory Wall</strong><small>Recent to oldest moments.</small></a>
+        <a class="feature-card" href="badges.html"><span>🏆</span><strong>Achievement Badges</strong><small>Unlock our little wins.</small></a>
+        <a class="feature-card" href="game.html"><span>🎮</span><strong>Our Game Room</strong><small>Three live games for two.</small></a>
+        <a class="feature-card" href="messages.html"><span>💬</span><strong>Our Chat</strong><small>Leave a note for later.</small></a>
+        <a class="feature-card" href="gifts.html"><span>🎁</span><strong>Gifts Corner</strong><small>Surprises for my princess.</small></a>
+        <a class="feature-card" href="love.html"><span>💕</span><strong>Love Notes</strong><small>Sweet things on demand.</small></a>
+      </div>
+    </section>
+  </main>
+
+  <div class="lightbox" id="lightbox" aria-hidden="true">
+    <button class="lightbox-close" type="button" aria-label="Close image">×</button>
+    <img src="" alt="">
+    <p></p>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
