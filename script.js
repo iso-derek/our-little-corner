@@ -922,10 +922,11 @@
         resetButton.textContent = round.id && !winner ? "Duel in progress" : "Waiting for Frog to start";
       }
       resetButton.disabled = !hasIdentity || me !== "frog";
-      document.getElementById("setSecret").disabled = !hasIdentity || !round.id || Boolean(mySecret) || Boolean(winner);
+      document.getElementById("setSecret").disabled = !hasIdentity || Boolean(mySecret) || Boolean(winner);
       document.getElementById("checkGuess").disabled = !hasIdentity || !ready || Boolean(winner);
       rangeEl.disabled = Boolean(round.id && !winner);
-      secretEl.disabled = !hasIdentity || !round.id || Boolean(mySecret) || Boolean(winner);
+      // Let either player prepare a number while a newly-started round is still syncing.
+      secretEl.disabled = !hasIdentity || Boolean(mySecret) || Boolean(winner);
       guessEl.disabled = !hasIdentity || !ready || Boolean(winner);
 
       if (!hasIdentity) {
@@ -998,7 +999,13 @@
     });
 
     document.getElementById("setSecret").addEventListener("click", async () => {
-      if (!(await refreshBeforeNumberAction()) || !round.id || round.winner) return;
+      if (!(await refreshBeforeNumberAction()) || round.winner) return;
+      if (!round.id) {
+        resultEl.textContent = roleEl.value === "frog"
+          ? "Start a new duel before locking your number."
+          : "Waiting for Frog to start the duel. Your number will stay entered.";
+        return;
+      }
       const max = Number(round.range);
       const value = Number(secretEl.value);
       if (!value || value < 1 || value > max) {
