@@ -569,15 +569,6 @@
     return gamePlayers.includes(player);
   }
 
-  function isGamePlayerOnline(player) {
-    const seenAt = Date.parse(shared.get(`pf_presence_${player}`, ""));
-    return Number.isFinite(seenAt) && Date.now() - seenAt < gamePresenceWindowMs;
-  }
-
-  function areBothGamePlayersOnline() {
-    return gamePlayers.every(isGamePlayerOnline);
-  }
-
   function setupGameHub() {
     const identity = document.getElementById("gameIdentity");
     const tabs = [...document.querySelectorAll("[data-game-tab]")];
@@ -722,7 +713,6 @@
 
     function render() {
       const hasIdentity = isGamePlayer(identity.value);
-      const bothPresent = areBothGamePlayersOnline();
       const question = questions[Number(round.questionIndex)] || null;
       const frog = answerFor("frog");
       const princess = answerFor("princess");
@@ -736,15 +726,14 @@
       questionEl.textContent = question ? question[0] : "Press “New question” to begin.";
       optionA.textContent = question ? question[1] : "Option A";
       optionB.textContent = question ? question[2] : "Option B";
-      optionA.disabled = !hasIdentity || !bothPresent || !question || Boolean(mine);
-      optionB.disabled = !hasIdentity || !bothPresent || !question || Boolean(mine);
-      document.getElementById("nextSameQuestion").disabled = !hasIdentity || !bothPresent;
+      optionA.disabled = !hasIdentity || !question || Boolean(mine);
+      optionB.disabled = !hasIdentity || !question || Boolean(mine);
+      document.getElementById("nextSameQuestion").disabled = !hasIdentity;
       optionA.classList.toggle("selected", mine === "A");
       optionB.classList.toggle("selected", mine === "B");
 
       const result = document.getElementById("sameResult");
       if (!hasIdentity) result.textContent = "Choose Frog or Princess before answering.";
-      else if (!bothPresent) result.textContent = "Both Frog and Princess must be active before answering.";
       else if (!question) result.textContent = "Your choices stay hidden until you have both answered.";
       else if (bothAnswered) {
         const frogChoice = frog === "A" ? question[1] : question[2];
@@ -772,7 +761,7 @@
       await controllers.gameHub?.heartbeat?.();
       await shared.pull(true);
       refreshFromStore();
-      if (!isGamePlayer(identity.value) || !areBothGamePlayersOnline() || !round.id || answerFor(identity.value)) return;
+      if (!isGamePlayer(identity.value) || !round.id || answerFor(identity.value)) return;
       const answer = { roundId: round.id, choice, answeredAt: new Date().toISOString() };
       if (identity.value === "frog") frogAnswer = answer;
       else princessAnswer = answer;
@@ -786,7 +775,7 @@
       await controllers.gameHub?.heartbeat?.();
       await shared.pull(true);
       refreshFromStore();
-      if (!isGamePlayer(identity.value) || !areBothGamePlayersOnline()) return;
+      if (!isGamePlayer(identity.value)) return;
       let nextIndex = Math.floor(Math.random() * questions.length);
       if (questions.length > 1 && nextIndex === Number(round.questionIndex)) {
         nextIndex = (nextIndex + 1) % questions.length;
@@ -850,10 +839,6 @@
       return Number.isFinite(seenAt) && Date.now() - seenAt < gamePresenceWindowMs;
     }
 
-    function bothOnline() {
-      return players.every(isOnline);
-    }
-
     function recordForRound(key, fallback = null) {
       const record = shared.get(key, fallback);
       return record?.roundId === round.id ? record : fallback;
@@ -890,7 +875,6 @@
       const opponent = hasIdentity ? otherPlayer(me) : null;
       const ready = bothReady();
       const winner = round.winner || winnerFromStates();
-      const active = bothOnline();
       const mySecret = hasIdentity ? secrets[me] : null;
       const myState = hasIdentity ? playerStates[me] : defaultPlayerState;
 
@@ -900,11 +884,12 @@
       attemptsEl.textContent = `${playerStates.frog.attempts || 0} / ${playerStates.princess.attempts || 0}`;
 
       function playerStatus(player) {
-        if (!isOnline(player)) return "Away";
-        if (!round.id) return "Ready";
+        const online = isOnline(player);
+        if (!round.id) return online ? "Ready" : "Away";
         if (winner) return winner === player ? "Won 🎉" : "Round over";
-        if (ready) return `${playerStates[player].attempts || 0} guesses`;
-        return secrets[player] ? "Number locked" : "Choosing";
+        if (ready) return `${playerStates[player].attempts || 0} guesses${online ? "" : " · away"}`;
+        if (secrets[player]) return `Number locked${online ? "" : " · away"}`;
+        return online ? "Choosing" : "Away";
       }
 
       hostStatus.textContent = playerStatus("frog");
@@ -918,7 +903,6 @@
             : "Locking numbers";
 
       if (!hasIdentity) secretStatus.textContent = "Choose Frog or Princess before joining the duel.";
-      else if (!active) secretStatus.textContent = "Both Frog and Princess must be here to play.";
       else if (!round.id) secretStatus.textContent = me === "frog"
         ? "Start the duel, then lock your secret number."
         : "Wait for Frog to start the duel, then lock your secret number.";
@@ -929,7 +913,6 @@
       if (!ready) guessHelp.textContent = "Both players must lock their numbers before guessing.";
       else if (winner) guessHelp.textContent = `${playerLabels[winner]} won this duel.`;
       else if (!hasIdentity) guessHelp.textContent = "Choose your player before guessing.";
-      else if (!active) guessHelp.textContent = `${playerLabels[opponent]} must be active before you can guess.`;
       else guessHelp.textContent = `Guess ${playerLabels[opponent]}'s number from 1 to ${round.range}.`;
 
       const resetButton = document.getElementById("resetGame");
@@ -939,11 +922,11 @@
         resetButton.textContent = round.id && !winner ? "Duel in progress" : "Waiting for Frog to start";
       }
       resetButton.disabled = !hasIdentity || me !== "frog";
-      document.getElementById("setSecret").disabled = !hasIdentity || !active || !round.id || Boolean(mySecret) || Boolean(winner);
-      document.getElementById("checkGuess").disabled = !hasIdentity || !active || !ready || Boolean(winner);
+      document.getElementById("setSecret").disabled = !hasIdentity || !round.id || Boolean(mySecret) || Boolean(winner);
+      document.getElementById("checkGuess").disabled = !hasIdentity || !ready || Boolean(winner);
       rangeEl.disabled = Boolean(round.id && !winner);
-      secretEl.disabled = !round.id || Boolean(mySecret) || Boolean(winner);
-      guessEl.disabled = !hasIdentity || !active || !ready || Boolean(winner);
+      secretEl.disabled = !hasIdentity || !round.id || Boolean(mySecret) || Boolean(winner);
+      guessEl.disabled = !hasIdentity || !ready || Boolean(winner);
 
       if (!hasIdentity) {
         resultEl.textContent = "Choose Frog or Princess to join the game.";
@@ -970,7 +953,7 @@
       renderScores();
     }
 
-    async function requireBothPlayers() {
+    async function refreshBeforeNumberAction() {
       if (!["frog", "princess"].includes(roleEl.value)) {
         resultEl.textContent = "Choose Frog or Princess before joining the game.";
         return false;
@@ -978,9 +961,7 @@
       await controllers.gameHub?.heartbeat?.();
       await shared.pull(true);
       refreshFromStore();
-      if (bothOnline()) return true;
-      resultEl.textContent = "Both Frog and Princess need the Game Room open before you can play.";
-      return false;
+      return true;
     }
 
     roleEl.addEventListener("change", () => {
@@ -1017,7 +998,7 @@
     });
 
     document.getElementById("setSecret").addEventListener("click", async () => {
-      if (!(await requireBothPlayers()) || !round.id || round.winner) return;
+      if (!(await refreshBeforeNumberAction()) || !round.id || round.winner) return;
       const max = Number(round.range);
       const value = Number(secretEl.value);
       if (!value || value < 1 || value > max) {
@@ -1036,7 +1017,7 @@
     });
 
     document.getElementById("checkGuess").addEventListener("click", async () => {
-      if (!(await requireBothPlayers()) || !bothReady()) return;
+      if (!(await refreshBeforeNumberAction()) || !bothReady()) return;
       const me = roleEl.value;
       const opponent = otherPlayer(me);
       const winner = round.winner || winnerFromStates();
@@ -1169,7 +1150,6 @@
     function renderRound() {
       const me = roleEl.value;
       const hasIdentity = isGamePlayer(me);
-      const bothPresent = areBothGamePlayersOnline();
       const isHost = round.host === me;
       const isGuesser = round.guesser === me;
       const isWaiting = round.phase === "waiting";
@@ -1189,26 +1169,22 @@
 
       secretStatus.textContent = !hasIdentity
         ? "Choose Frog or Princess before starting a word round."
-        : !bothPresent
-          ? "Both Frog and Princess must be active before starting a word round."
         : isHost && isGuessing
         ? `You are hosting. Your ${round.length}-letter word is set.`
         : "Choose 3 letters for a quicker game, or 4 letters for increased difficulty.";
       guessHelp.textContent = !hasIdentity
         ? "Choose your player before guessing."
-        : !bothPresent
-          ? "Both players must be active before guessing."
         : isGuesser && isGuessing
         ? `Guess the ${round.length}-letter word.`
         : round.guesser
           ? `${playerLabels[round.guesser]} is the word guesser this round.`
           : "Wait for a host to start a word round.";
 
-      document.getElementById("setSecretWord").disabled = !hasIdentity || !bothPresent || isGuessing;
-      document.getElementById("checkWordGuess").disabled = !bothPresent || !isGuesser || !isGuessing;
+      document.getElementById("setSecretWord").disabled = !hasIdentity || isGuessing;
+      document.getElementById("checkWordGuess").disabled = !isGuesser || !isGuessing;
       lengthEl.disabled = isGuessing;
       secretEl.disabled = isGuessing;
-      guessEl.disabled = !bothPresent || !isGuesser || !isGuessing;
+      guessEl.disabled = !isGuesser || !isGuessing;
 
       resultEl.textContent = round.lastClue || defaultRound.lastClue;
       renderHistory();
@@ -1258,10 +1234,6 @@
         resultEl.textContent = "Choose Frog or Princess before starting a word round.";
         return;
       }
-      if (!areBothGamePlayersOnline()) {
-        resultEl.textContent = "Both Frog and Princess must be active before starting a word round.";
-        return;
-      }
       if (secret.length !== length) {
         resultEl.textContent = `Pick a ${length}-letter secret word.`;
         return;
@@ -1283,10 +1255,6 @@
       await controllers.gameHub?.heartbeat?.();
       await shared.pull(true);
       refreshFromStore();
-      if (!areBothGamePlayersOnline()) {
-        resultEl.textContent = "Both players must be active before guessing.";
-        return;
-      }
       if (round.phase !== "guessing" || roleEl.value !== round.guesser) {
         resultEl.textContent = "Wait until it is your word guessing turn.";
         return;
