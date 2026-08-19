@@ -33,6 +33,7 @@
     <section class="game-identity-bar" aria-label="Player and connection status">
       <label>Playing as
         <select id="gameIdentity">
+          <option value="">Choose player</option>
           <option value="frog">Frog 🐸</option>
           <option value="princess">Princess 👑</option>
         </select>
@@ -58,7 +59,7 @@
         <p>Lock your own secret numbers, then race to guess each other's first.</p>
       </div>
       <div class="game-status-grid">
-        <div class="game-status-card"><span>Round</span><strong id="roundStatus">Waiting for host</strong></div>
+        <div class="game-status-card"><span>Round</span><strong id="roundStatus">Start a new duel</strong></div>
         <div class="game-status-card"><span>Frog</span><strong id="hostStatus">Waiting</strong></div>
         <div class="game-status-card"><span>Princess</span><strong id="guesserStatus">Waiting</strong></div>
         <div class="game-status-card"><span>Attempts (F / P)</span><strong id="attemptsText">0 / 0</strong></div>
@@ -189,6 +190,6 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
-  <script src="script.js?v=20260819-2"></script>
+  <script src="script.js?v=20260819-4"></script>
 </body>
 </html>

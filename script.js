@@ -12,7 +12,8 @@
   const remoteCache = {};
   const controllers = {};
   let remoteReady = false;
-  let remotePullInFlight = false;
+  let remotePullPromise = null;
+  let syncStatusEl = null;
 
   const defaultLoveNotes = [
     "The frog misses his princess 🐸👑",
@@ -51,26 +52,27 @@
       if (!supabaseClient) return;
       const connected = await this.pull();
       if (!connected) {
+        updateSyncStatus("offline");
         toast("Offline mode");
         return;
       }
       subscribeToRemoteChanges();
-      if (page === "game") {
-        window.setInterval(async () => {
-          if (await this.pull()) refreshCurrentPage(false);
-        }, 4000);
-      }
+      const pollDelay = ["game", "messages"].includes(page) ? 4000 : 10000;
+      window.setInterval(async () => {
+        if (await this.pull()) refreshCurrentPage(false);
+      }, pollDelay);
     },
     async pull() {
-      if (!supabaseClient || remotePullInFlight) return false;
-      remotePullInFlight = true;
-      try {
+      if (!supabaseClient) return false;
+      if (remotePullPromise) return remotePullPromise;
+      remotePullPromise = (async () => {
         const { data, error } = await supabaseClient
           .from("corner_kv")
           .select("key,value")
           .eq("site_id", siteId);
         if (error) {
           console.warn("Supabase load failed, using localStorage.", error);
+          updateSyncStatus("offline");
           return false;
         }
         const remoteKeys = new Set();
@@ -84,9 +86,13 @@
           });
         }
         remoteReady = true;
+        updateSyncStatus("online");
         return true;
+      })();
+      try {
+        return await remotePullPromise;
       } finally {
-        remotePullInFlight = false;
+        remotePullPromise = null;
       }
     },
     get(key, fallback = "") {
@@ -109,7 +115,10 @@
         });
       if (error) {
         console.warn("Supabase save failed.", error);
+        updateSyncStatus("offline");
         toast("Saved on this device");
+      } else {
+        updateSyncStatus("online");
       }
     },
     async uploadPhoto(file, memoryId) {
@@ -179,13 +188,29 @@
   function addStatusPill() {
     const header = document.querySelector(".site-header");
     if (!header) return;
-    const status = document.createElement("span");
-    status.className = `sync-status ${supabaseClient ? "online" : "local"}`;
-    status.textContent = supabaseClient ? "Shared mode" : "Local mode";
-    status.title = supabaseClient
-      ? "Connected to shared Supabase storage"
+    syncStatusEl = document.createElement("span");
+    syncStatusEl.className = "sync-status local";
+    syncStatusEl.textContent = supabaseClient ? "Connecting" : "Local mode";
+    syncStatusEl.title = supabaseClient
+      ? "Checking the shared Supabase connection"
       : "Add Supabase details in supabase-config.js to sync across devices";
-    header.appendChild(status);
+    header.appendChild(syncStatusEl);
+  }
+
+  function updateSyncStatus(mode) {
+    if (!syncStatusEl) return;
+    syncStatusEl.className = `sync-status ${mode}`;
+    if (mode === "online") {
+      syncStatusEl.textContent = "Shared mode";
+      syncStatusEl.title = "Connected to shared Supabase storage";
+      return;
+    }
+    if (mode === "offline") {
+      syncStatusEl.textContent = "Offline mode";
+      syncStatusEl.title = "Shared storage is unavailable; changes are staying on this device";
+      return;
+    }
+    syncStatusEl.textContent = "Local mode";
   }
 
   function requirePasscode() {
@@ -533,6 +558,21 @@
     renderProgress();
   }
 
+  const gamePlayers = ["frog", "princess"];
+
+  function isGamePlayer(player) {
+    return gamePlayers.includes(player);
+  }
+
+  function isGamePlayerOnline(player) {
+    const seenAt = Date.parse(shared.get(`pf_presence_${player}`, ""));
+    return Number.isFinite(seenAt) && Date.now() - seenAt < 65000;
+  }
+
+  function areBothGamePlayersOnline() {
+    return gamePlayers.every(isGamePlayerOnline);
+  }
+
   function setupGameHub() {
     const identity = document.getElementById("gameIdentity");
     const tabs = [...document.querySelectorAll("[data-game-tab]")];
@@ -547,8 +587,8 @@
       word: document.getElementById("wordGamePanel"),
       same: document.getElementById("sameGamePanel")
     };
-    identity.value = sessionStorage.getItem("pf_game_player") || "frog";
-    let currentIdentity = identity.value;
+    const savedIdentity = sessionStorage.getItem("pf_game_player");
+    identity.value = ["frog", "princess"].includes(savedIdentity) ? savedIdentity : "";
 
     function selectGame(name) {
       const selected = panels[name] ? name : "number";
@@ -577,6 +617,10 @@
     }
 
     async function heartbeat() {
+      if (!["frog", "princess"].includes(identity.value)) {
+        renderPresence();
+        return;
+      }
       await shared.set(`pf_presence_${identity.value}`, new Date().toISOString());
       renderPresence();
     }
@@ -594,12 +638,8 @@
     });
 
     identity.addEventListener("change", async () => {
-      const previousIdentity = currentIdentity;
-      currentIdentity = identity.value;
+      if (!["frog", "princess"].includes(identity.value)) return;
       sessionStorage.setItem("pf_game_player", identity.value);
-      if (previousIdentity !== currentIdentity) {
-        await shared.set(`pf_presence_${previousIdentity}`, "");
-      }
       await heartbeat();
       controllers.numberGame?.refresh();
       controllers.wordGame?.refresh();
@@ -667,6 +707,8 @@
     }
 
     function render() {
+      const hasIdentity = isGamePlayer(identity.value);
+      const bothPresent = areBothGamePlayersOnline();
       const question = questions[Number(round.questionIndex)] || null;
       const frog = answerFor("frog");
       const princess = answerFor("princess");
@@ -680,13 +722,16 @@
       questionEl.textContent = question ? question[0] : "Press “New question” to begin.";
       optionA.textContent = question ? question[1] : "Option A";
       optionB.textContent = question ? question[2] : "Option B";
-      optionA.disabled = !question || Boolean(mine);
-      optionB.disabled = !question || Boolean(mine);
+      optionA.disabled = !hasIdentity || !bothPresent || !question || Boolean(mine);
+      optionB.disabled = !hasIdentity || !bothPresent || !question || Boolean(mine);
+      document.getElementById("nextSameQuestion").disabled = !hasIdentity || !bothPresent;
       optionA.classList.toggle("selected", mine === "A");
       optionB.classList.toggle("selected", mine === "B");
 
       const result = document.getElementById("sameResult");
-      if (!question) result.textContent = "Your choices stay hidden until you have both answered.";
+      if (!hasIdentity) result.textContent = "Choose Frog or Princess before answering.";
+      else if (!bothPresent) result.textContent = "Both Frog and Princess must be active before answering.";
+      else if (!question) result.textContent = "Your choices stay hidden until you have both answered.";
       else if (bothAnswered) {
         const frogChoice = frog === "A" ? question[1] : question[2];
         const princessChoice = princess === "A" ? question[1] : question[2];
@@ -710,7 +755,9 @@
     }
 
     async function choose(choice) {
-      if (!round.id || answerFor(identity.value)) return;
+      await shared.pull();
+      refreshFromStore();
+      if (!isGamePlayer(identity.value) || !areBothGamePlayersOnline() || !round.id || answerFor(identity.value)) return;
       const answer = { roundId: round.id, choice, answeredAt: new Date().toISOString() };
       if (identity.value === "frog") frogAnswer = answer;
       else princessAnswer = answer;
@@ -721,6 +768,9 @@
     optionA.addEventListener("click", () => choose("A"));
     optionB.addEventListener("click", () => choose("B"));
     document.getElementById("nextSameQuestion").addEventListener("click", async () => {
+      await shared.pull();
+      refreshFromStore();
+      if (!isGamePlayer(identity.value) || !areBothGamePlayersOnline()) return;
       let nextIndex = Math.floor(Math.random() * questions.length);
       if (questions.length > 1 && nextIndex === Number(round.questionIndex)) {
         nextIndex = (nextIndex + 1) % questions.length;
@@ -772,7 +822,8 @@
     let scores = { frog: 0, princess: 0, lastScoredRound: null, ...shared.get("pf_game_scores", {}) };
     let secrets = { frog: null, princess: null };
     let playerStates = { frog: { ...defaultPlayerState }, princess: { ...defaultPlayerState } };
-    roleEl.value = sessionStorage.getItem("pf_game_player") || "frog";
+    const savedPlayer = sessionStorage.getItem("pf_game_player");
+    roleEl.value = ["frog", "princess"].includes(savedPlayer) ? savedPlayer : "";
 
     function otherPlayer(player) {
       return player === "frog" ? "princess" : "frog";
@@ -819,12 +870,13 @@
 
     function renderRound() {
       const me = roleEl.value;
-      const opponent = otherPlayer(me);
+      const hasIdentity = players.includes(me);
+      const opponent = hasIdentity ? otherPlayer(me) : null;
       const ready = bothReady();
       const winner = round.winner || winnerFromStates();
       const active = bothOnline();
-      const mySecret = secrets[me];
-      const myState = playerStates[me];
+      const mySecret = hasIdentity ? secrets[me] : null;
+      const myState = hasIdentity ? playerStates[me] : defaultPlayerState;
 
       rangeEl.value = String(round.range || 100);
       secretEl.max = rangeEl.value;
@@ -849,7 +901,8 @@
             ? `Live: 1 to ${round.range}`
             : "Locking numbers";
 
-      if (!active) secretStatus.textContent = "Both Frog and Princess must be here to play.";
+      if (!hasIdentity) secretStatus.textContent = "Choose Frog or Princess before joining the duel.";
+      else if (!active) secretStatus.textContent = "Both Frog and Princess must be here to play.";
       else if (!round.id) secretStatus.textContent = "Press Start new duel, then lock your secret number.";
       else if (winner) secretStatus.textContent = "Start a new duel when you are ready to play again.";
       else if (mySecret) secretStatus.textContent = "Your number is locked. It stays hidden from your opponent.";
@@ -857,17 +910,20 @@
 
       if (!ready) guessHelp.textContent = "Both players must lock their numbers before guessing.";
       else if (winner) guessHelp.textContent = `${playerLabels[winner]} won this duel.`;
+      else if (!hasIdentity) guessHelp.textContent = "Choose your player before guessing.";
       else if (!active) guessHelp.textContent = `${playerLabels[opponent]} must be active before you can guess.`;
       else guessHelp.textContent = `Guess ${playerLabels[opponent]}'s number from 1 to ${round.range}.`;
 
-      document.getElementById("resetGame").disabled = !active;
-      document.getElementById("setSecret").disabled = !active || !round.id || Boolean(mySecret) || Boolean(winner);
-      document.getElementById("checkGuess").disabled = !active || !ready || Boolean(winner);
+      document.getElementById("resetGame").disabled = !hasIdentity || !active;
+      document.getElementById("setSecret").disabled = !hasIdentity || !active || !round.id || Boolean(mySecret) || Boolean(winner);
+      document.getElementById("checkGuess").disabled = !hasIdentity || !active || !ready || Boolean(winner);
       rangeEl.disabled = Boolean(round.id && !winner);
       secretEl.disabled = !round.id || Boolean(mySecret) || Boolean(winner);
-      guessEl.disabled = !active || !ready || Boolean(winner);
+      guessEl.disabled = !hasIdentity || !active || !ready || Boolean(winner);
 
-      if (winner) {
+      if (!hasIdentity) {
+        resultEl.textContent = "Choose Frog or Princess to join the game.";
+      } else if (winner) {
         resultEl.textContent = winner === me
           ? `You guessed ${playerLabels[opponent]}'s number first 🎉`
           : `${playerLabels[winner]} guessed your number first.`;
@@ -889,6 +945,10 @@
     }
 
     async function requireBothPlayers() {
+      if (!["frog", "princess"].includes(roleEl.value)) {
+        resultEl.textContent = "Choose Frog or Princess before joining the game.";
+        return false;
+      }
       await shared.pull();
       refreshFromStore();
       if (bothOnline()) return true;
@@ -1074,6 +1134,8 @@
 
     function renderRound() {
       const me = roleEl.value;
+      const hasIdentity = isGamePlayer(me);
+      const bothPresent = areBothGamePlayersOnline();
       const isHost = round.host === me;
       const isGuesser = round.guesser === me;
       const isWaiting = round.phase === "waiting";
@@ -1091,20 +1153,28 @@
       if (isGuessing) roundStatus.textContent = `Live: ${round.length} letters`;
       if (isWon) roundStatus.textContent = `${playerLabels[round.winner]} won`;
 
-      secretStatus.textContent = isHost && isGuessing
+      secretStatus.textContent = !hasIdentity
+        ? "Choose Frog or Princess before starting a word round."
+        : !bothPresent
+          ? "Both Frog and Princess must be active before starting a word round."
+        : isHost && isGuessing
         ? `You are hosting. Your ${round.length}-letter word is set.`
         : "Choose 3 letters for a quicker game, or 4 letters for increased difficulty.";
-      guessHelp.textContent = isGuesser && isGuessing
+      guessHelp.textContent = !hasIdentity
+        ? "Choose your player before guessing."
+        : !bothPresent
+          ? "Both players must be active before guessing."
+        : isGuesser && isGuessing
         ? `Guess the ${round.length}-letter word.`
         : round.guesser
           ? `${playerLabels[round.guesser]} is the word guesser this round.`
           : "Wait for a host to start a word round.";
 
-      document.getElementById("setSecretWord").disabled = isGuessing;
-      document.getElementById("checkWordGuess").disabled = !isGuesser || !isGuessing;
+      document.getElementById("setSecretWord").disabled = !hasIdentity || !bothPresent || isGuessing;
+      document.getElementById("checkWordGuess").disabled = !bothPresent || !isGuesser || !isGuessing;
       lengthEl.disabled = isGuessing;
       secretEl.disabled = isGuessing;
-      guessEl.disabled = !isGuesser || !isGuessing;
+      guessEl.disabled = !bothPresent || !isGuesser || !isGuessing;
 
       resultEl.textContent = round.lastClue || defaultRound.lastClue;
       renderHistory();
@@ -1144,9 +1214,19 @@
     });
 
     document.getElementById("setSecretWord").addEventListener("click", async () => {
+      await shared.pull();
+      refreshFromStore();
       const length = Number(lengthEl.value);
       const secret = cleanWord(secretEl.value);
       const host = roleEl.value;
+      if (!isGamePlayer(host)) {
+        resultEl.textContent = "Choose Frog or Princess before starting a word round.";
+        return;
+      }
+      if (!areBothGamePlayersOnline()) {
+        resultEl.textContent = "Both Frog and Princess must be active before starting a word round.";
+        return;
+      }
       if (secret.length !== length) {
         resultEl.textContent = `Pick a ${length}-letter secret word.`;
         return;
@@ -1165,6 +1245,12 @@
     });
 
     document.getElementById("checkWordGuess").addEventListener("click", async () => {
+      await shared.pull();
+      refreshFromStore();
+      if (!areBothGamePlayersOnline()) {
+        resultEl.textContent = "Both players must be active before guessing.";
+        return;
+      }
       if (round.phase !== "guessing" || roleEl.value !== round.guesser) {
         resultEl.textContent = "Wait until it is your word guessing turn.";
         return;
@@ -1470,7 +1556,7 @@
             '</div>' +
           '</div>' +
           '<form class="inline-edit-form" hidden>' +
-            '<input class="edit-title" type="text" maxlength="100" value="' + escapeHtml(item.title) + '" required>' +
+            '<input class="edit-title" type="text" maxlength="100" aria-label="Letter title" value="' + escapeHtml(item.title) + '" required>' +
             '<button class="btn primary" type="submit">Save</button>' +
             '<button class="btn cancel-edit" type="button">Cancel</button>' +
           '</form>' +
@@ -1603,8 +1689,8 @@
             '<button class="item-action delete-item" type="button" title="Delete badge" aria-label="Delete badge">×</button>' +
           '</div>' +
           '<form class="inline-edit-form badge-edit-form" hidden>' +
-            '<input class="edit-emoji" type="text" maxlength="4" value="' + escapeHtml(item.emoji || "🏆") + '" required>' +
-            '<input class="edit-title" type="text" maxlength="80" value="' + escapeHtml(item.title) + '" required>' +
+            '<input class="edit-emoji" type="text" maxlength="4" aria-label="Badge icon" value="' + escapeHtml(item.emoji || "🏆") + '" required>' +
+            '<input class="edit-title" type="text" maxlength="80" aria-label="Badge title" value="' + escapeHtml(item.title) + '" required>' +
             '<button class="btn primary" type="submit">Save</button>' +
             '<button class="btn cancel-edit" type="button">Cancel</button>' +
           '</form>' +
@@ -2001,7 +2087,7 @@
       list.innerHTML = quotes.map((quote, index) =>
         '<article class="quote-bubble editable-list-item" data-index="' + index + '">' +
           '<div class="editable-copy"><p>“' + escapeHtml(quote) + '”</p>' +
-            '<form class="inline-edit-form" hidden><input class="edit-value" type="text" maxlength="300" value="' + escapeHtml(quote) + '" required>' +
+            '<form class="inline-edit-form" hidden><input class="edit-value" type="text" maxlength="300" aria-label="Quote" value="' + escapeHtml(quote) + '" required>' +
               '<button class="btn primary" type="submit">Save</button><button class="btn cancel-edit" type="button">Cancel</button>' +
             '</form>' +
           '</div>' +
@@ -2094,7 +2180,7 @@
       list.innerHTML = notes.map((note, index) =>
         '<article class="note-item editable-list-item" data-index="' + index + '">' +
           '<div class="editable-copy"><p>' + escapeHtml(note) + '</p>' +
-            '<form class="inline-edit-form" hidden><input class="edit-value" type="text" maxlength="300" value="' + escapeHtml(note) + '" required>' +
+            '<form class="inline-edit-form" hidden><input class="edit-value" type="text" maxlength="300" aria-label="Love note" value="' + escapeHtml(note) + '" required>' +
               '<button class="btn primary" type="submit">Save</button><button class="btn cancel-edit" type="button">Cancel</button>' +
             '</form>' +
           '</div>' +

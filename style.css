@@ -73,6 +73,12 @@ textarea {
   background: rgba(217, 247, 222, 0.8);
 }
 
+.sync-status.offline {
+  color: #7a4b00;
+  background: rgba(255, 214, 110, 0.55);
+  border-color: rgba(163, 108, 0, 0.24);
+}
+
 .nav {
   display: flex;
   flex-wrap: wrap;
