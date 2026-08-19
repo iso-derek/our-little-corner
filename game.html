@@ -55,17 +55,17 @@
           <p class="eyebrow">Higher or lower</p>
           <h2>Guess My Number</h2>
         </div>
-        <p>One person sets the secret. The other follows the live clues.</p>
+        <p>Lock your own secret numbers, then race to guess each other's first.</p>
       </div>
       <div class="game-status-grid">
         <div class="game-status-card"><span>Round</span><strong id="roundStatus">Waiting for host</strong></div>
-        <div class="game-status-card"><span>Host</span><strong id="hostStatus">Not chosen</strong></div>
-        <div class="game-status-card"><span>Guesser</span><strong id="guesserStatus">Not chosen</strong></div>
-        <div class="game-status-card"><span>Attempts</span><strong id="attemptsText">0</strong></div>
+        <div class="game-status-card"><span>Frog</span><strong id="hostStatus">Waiting</strong></div>
+        <div class="game-status-card"><span>Princess</span><strong id="guesserStatus">Waiting</strong></div>
+        <div class="game-status-card"><span>Attempts (F / P)</span><strong id="attemptsText">0 / 0</strong></div>
       </div>
       <div class="game-workspace">
         <div class="host-panel">
-          <h3>Host a round</h3>
+          <h3>Choose your number</h3>
           <label>Range
             <select id="gameRange">
               <option value="50">1 to 50</option>
@@ -73,29 +73,29 @@
               <option value="500">1 to 500</option>
             </select>
           </label>
-          <label>Secret number
+          <button class="btn" id="resetGame" type="button">Start new duel</button>
+          <label>Your secret number
             <input id="secretNumber" type="number" min="1" max="100" inputmode="numeric" placeholder="Set it quietly">
           </label>
-          <button class="btn primary" id="setSecret" type="button">Start round 💗</button>
-          <p class="game-secret" id="secretStatus">Choose your secret number to host.</p>
+          <button class="btn primary" id="setSecret" type="button">Lock my number 💗</button>
+          <p class="game-secret" id="secretStatus">Both players must be here before the duel begins.</p>
         </div>
         <div class="guess-panel">
-          <h3>Make a guess</h3>
-          <p class="game-secret" id="guessHelp">Wait for a host to start a round.</p>
+          <h3>Guess their number</h3>
+          <p class="game-secret" id="guessHelp">Wait until both secret numbers are locked.</p>
           <label>Your guess
             <input id="guessNumber" type="number" min="1" max="100" inputmode="numeric" placeholder="Take a guess">
           </label>
           <button class="btn primary" id="checkGuess" type="button">Submit guess</button>
         </div>
       </div>
-      <p class="game-result" id="gameResult" aria-live="polite">Waiting for a brave guess.</p>
+      <p class="game-result" id="gameResult" aria-live="polite">Start a duel when you are both here.</p>
       <div class="game-footer">
         <div class="compact-scoreboard" aria-label="Number game scoreboard">
           <span>Frog <strong id="frogScore">0</strong></span>
           <span>Princess <strong id="princessScore">0</strong></span>
         </div>
         <div class="button-row">
-          <button class="btn" id="resetGame" type="button">New round</button>
           <button class="btn quiet-btn" id="resetScores" type="button">Reset scores</button>
         </div>
       </div>
@@ -189,6 +189,6 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
-  <script src="script.js?v=20260819-1"></script>
+  <script src="script.js?v=20260819-2"></script>
 </body>
 </html>

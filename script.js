@@ -189,37 +189,40 @@
   }
 
   function requirePasscode() {
-    if (!passcode || passcode === "change-this-passcode") return;
-    if (sessionStorage.getItem(authKey) === "yes") return;
+    if (!passcode || passcode === "change-this-passcode") return Promise.resolve();
+    if (sessionStorage.getItem(authKey) === "yes") return Promise.resolve();
 
-    const gate = document.createElement("div");
-    gate.className = "passcode-gate";
-    gate.innerHTML = `
-      <form class="passcode-card">
-        <p class="eyebrow">Private corner</p>
-        <h1>Princess and the Frog's Corner 🐸👑</h1>
-        <p>Enter the shared passcode to come in.</p>
-        <input type="password" autocomplete="current-password" placeholder="Passcode" aria-label="Passcode">
-        <button class="btn primary" type="submit">Unlock 💕</button>
-        <p class="passcode-error" aria-live="polite"></p>
-      </form>
-    `;
-    document.body.appendChild(gate);
-    const form = gate.querySelector("form");
-    const input = gate.querySelector("input");
-    const error = gate.querySelector(".passcode-error");
-    input.focus();
-    form.addEventListener("submit", (event) => {
-      event.preventDefault();
-      if (input.value === passcode) {
-        sessionStorage.setItem(authKey, "yes");
-        gate.remove();
-        toast("Welcome 💕");
-      } else {
-        error.textContent = "Wrong passcode, try again.";
-        input.value = "";
-        input.focus();
-      }
+    return new Promise((resolve) => {
+      const gate = document.createElement("div");
+      gate.className = "passcode-gate";
+      gate.innerHTML = `
+        <form class="passcode-card">
+          <p class="eyebrow">Private corner</p>
+          <h1>Princess and the Frog's Corner 🐸👑</h1>
+          <p>Enter the shared passcode to come in.</p>
+          <input type="password" autocomplete="current-password" placeholder="Passcode" aria-label="Passcode">
+          <button class="btn primary" type="submit">Unlock 💕</button>
+          <p class="passcode-error" aria-live="polite"></p>
+        </form>
+      `;
+      document.body.appendChild(gate);
+      const form = gate.querySelector("form");
+      const input = gate.querySelector("input");
+      const error = gate.querySelector(".passcode-error");
+      input.focus();
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        if (input.value === passcode) {
+          sessionStorage.setItem(authKey, "yes");
+          gate.remove();
+          toast("Welcome 💕");
+          resolve();
+        } else {
+          error.textContent = "Wrong passcode, try again.";
+          input.value = "";
+          input.focus();
+        }
+      });
     });
   }
 
@@ -545,6 +548,7 @@
       same: document.getElementById("sameGamePanel")
     };
     identity.value = sessionStorage.getItem("pf_game_player") || "frog";
+    let currentIdentity = identity.value;
 
     function selectGame(name) {
       const selected = panels[name] ? name : "number";
@@ -589,9 +593,14 @@
       });
     });
 
-    identity.addEventListener("change", () => {
+    identity.addEventListener("change", async () => {
+      const previousIdentity = currentIdentity;
+      currentIdentity = identity.value;
       sessionStorage.setItem("pf_game_player", identity.value);
-      heartbeat();
+      if (previousIdentity !== currentIdentity) {
+        await shared.set(`pf_presence_${previousIdentity}`, "");
+      }
+      await heartbeat();
       controllers.numberGame?.refresh();
       controllers.wordGame?.refresh();
       controllers.sameGame?.refresh();
@@ -754,28 +763,53 @@
       return;
     }
 
-    const playerLabels = {
-      frog: "Frog 🐸",
-      princess: "Princess 👑"
-    };
-    const defaultRound = {
-      phase: "waiting",
-      range: 100,
-      secret: null,
-      host: null,
-      guesser: null,
-      attempts: 0,
-      lastGuess: null,
-      lastClue: "Waiting for a host to start a round.",
-      winner: null,
-      updatedAt: null
-    };
-    let round = { ...defaultRound, ...shared.get("pf_game_round", defaultRound) };
-    let scores = { frog: 0, princess: 0, ...shared.get("pf_game_scores", { frog: 0, princess: 0 }) };
+    const players = ["frog", "princess"];
+    const playerLabels = { frog: "Frog 🐸", princess: "Princess 👑" };
+    const roundKey = "pf_number_duel_round";
+    const defaultRound = { id: null, range: 100, startedAt: null, winner: null, winnerAt: null };
+    const defaultPlayerState = { roundId: null, attempts: 0, lastGuess: null, clue: "", correctAt: null };
+    let round = { ...defaultRound, ...shared.get(roundKey, defaultRound) };
+    let scores = { frog: 0, princess: 0, lastScoredRound: null, ...shared.get("pf_game_scores", {}) };
+    let secrets = { frog: null, princess: null };
+    let playerStates = { frog: { ...defaultPlayerState }, princess: { ...defaultPlayerState } };
     roleEl.value = sessionStorage.getItem("pf_game_player") || "frog";
 
     function otherPlayer(player) {
       return player === "frog" ? "princess" : "frog";
+    }
+
+    function isOnline(player) {
+      const seenAt = Date.parse(shared.get(`pf_presence_${player}`, ""));
+      return Number.isFinite(seenAt) && Date.now() - seenAt < 65000;
+    }
+
+    function bothOnline() {
+      return players.every(isOnline);
+    }
+
+    function recordForRound(key, fallback = null) {
+      const record = shared.get(key, fallback);
+      return record?.roundId === round.id ? record : fallback;
+    }
+
+    function loadRoundRecords() {
+      players.forEach((player) => {
+        secrets[player] = recordForRound(`pf_number_duel_secret_${player}`);
+        playerStates[player] = {
+          ...defaultPlayerState,
+          ...(recordForRound(`pf_number_duel_state_${player}`, defaultPlayerState) || defaultPlayerState)
+        };
+      });
+    }
+
+    function bothReady() {
+      return Boolean(round.id && secrets.frog && secrets.princess);
+    }
+
+    function winnerFromStates() {
+      return players
+        .filter((player) => playerStates[player].correctAt)
+        .sort((a, b) => Date.parse(playerStates[a].correctAt) - Date.parse(playerStates[b].correctAt))[0] || null;
     }
 
     function renderScores() {
@@ -785,52 +819,81 @@
 
     function renderRound() {
       const me = roleEl.value;
-      const isHost = round.host === me;
-      const isGuesser = round.guesser === me;
-      const isWaiting = round.phase === "waiting";
-      const isGuessing = round.phase === "guessing";
-      const isWon = round.phase === "won";
+      const opponent = otherPlayer(me);
+      const ready = bothReady();
+      const winner = round.winner || winnerFromStates();
+      const active = bothOnline();
+      const mySecret = secrets[me];
+      const myState = playerStates[me];
 
       rangeEl.value = String(round.range || 100);
       secretEl.max = rangeEl.value;
       guessEl.max = rangeEl.value;
-      attemptsEl.textContent = String(round.attempts || 0);
-      hostStatus.textContent = round.host ? playerLabels[round.host] : "Not chosen";
-      guesserStatus.textContent = round.guesser ? playerLabels[round.guesser] : "Not chosen";
+      attemptsEl.textContent = `${playerStates.frog.attempts || 0} / ${playerStates.princess.attempts || 0}`;
 
-      if (isWaiting) roundStatus.textContent = "Waiting for host";
-      if (isGuessing) roundStatus.textContent = `Live: 1 to ${round.range}`;
-      if (isWon) roundStatus.textContent = `${playerLabels[round.winner]} won`;
+      function playerStatus(player) {
+        if (!isOnline(player)) return "Away";
+        if (!round.id) return "Ready";
+        if (winner) return winner === player ? "Won 🎉" : "Round over";
+        if (ready) return `${playerStates[player].attempts || 0} guesses`;
+        return secrets[player] ? "Number locked" : "Choosing";
+      }
 
-      secretStatus.textContent = isHost && isGuessing
-        ? `You are hosting. Your secret is set for 1 to ${round.range}.`
-        : "Host sets the number. Guesser gets the clues.";
-      guessHelp.textContent = isGuesser && isGuessing
-        ? `You are guessing from 1 to ${round.range}.`
-        : round.guesser
-          ? `${playerLabels[round.guesser]} is the guesser this round.`
-          : "Wait for a host to start a round.";
+      hostStatus.textContent = playerStatus("frog");
+      guesserStatus.textContent = playerStatus("princess");
+      roundStatus.textContent = !round.id
+        ? "Start a new duel"
+        : winner
+          ? `${playerLabels[winner]} won`
+          : ready
+            ? `Live: 1 to ${round.range}`
+            : "Locking numbers";
 
-      document.getElementById("setSecret").disabled = isGuessing;
-      document.getElementById("checkGuess").disabled = !isGuesser || !isGuessing;
-      rangeEl.disabled = isGuessing;
-      secretEl.disabled = isGuessing;
-      guessEl.disabled = !isGuesser || !isGuessing;
+      if (!active) secretStatus.textContent = "Both Frog and Princess must be here to play.";
+      else if (!round.id) secretStatus.textContent = "Press Start new duel, then lock your secret number.";
+      else if (winner) secretStatus.textContent = "Start a new duel when you are ready to play again.";
+      else if (mySecret) secretStatus.textContent = "Your number is locked. It stays hidden from your opponent.";
+      else secretStatus.textContent = `Choose a secret number from 1 to ${round.range}, then lock it.`;
 
-      resultEl.textContent = round.lastClue || defaultRound.lastClue;
+      if (!ready) guessHelp.textContent = "Both players must lock their numbers before guessing.";
+      else if (winner) guessHelp.textContent = `${playerLabels[winner]} won this duel.`;
+      else if (!active) guessHelp.textContent = `${playerLabels[opponent]} must be active before you can guess.`;
+      else guessHelp.textContent = `Guess ${playerLabels[opponent]}'s number from 1 to ${round.range}.`;
+
+      document.getElementById("resetGame").disabled = !active;
+      document.getElementById("setSecret").disabled = !active || !round.id || Boolean(mySecret) || Boolean(winner);
+      document.getElementById("checkGuess").disabled = !active || !ready || Boolean(winner);
+      rangeEl.disabled = Boolean(round.id && !winner);
+      secretEl.disabled = !round.id || Boolean(mySecret) || Boolean(winner);
+      guessEl.disabled = !active || !ready || Boolean(winner);
+
+      if (winner) {
+        resultEl.textContent = winner === me
+          ? `You guessed ${playerLabels[opponent]}'s number first 🎉`
+          : `${playerLabels[winner]} guessed your number first.`;
+      } else if (myState.clue) {
+        resultEl.textContent = myState.clue;
+      } else if (ready) {
+        resultEl.textContent = "The race is live. Make your first guess.";
+      } else {
+        resultEl.textContent = "Waiting for both secret numbers to be locked.";
+      }
     }
 
     function refreshFromStore() {
-      round = { ...defaultRound, ...shared.get("pf_game_round", defaultRound) };
-      scores = { frog: 0, princess: 0, ...shared.get("pf_game_scores", { frog: 0, princess: 0 }) };
+      round = { ...defaultRound, ...shared.get(roundKey, defaultRound) };
+      scores = { frog: 0, princess: 0, lastScoredRound: null, ...shared.get("pf_game_scores", {}) };
+      loadRoundRecords();
       renderRound();
       renderScores();
     }
 
-    async function saveRound(nextRound) {
-      round = { ...nextRound, updatedAt: new Date().toISOString() };
-      await shared.set("pf_game_round", round);
-      renderRound();
+    async function requireBothPlayers() {
+      await shared.pull();
+      refreshFromStore();
+      if (bothOnline()) return true;
+      resultEl.textContent = "Both Frog and Princess need the Game Room open before you can play.";
+      return false;
     }
 
     roleEl.addEventListener("change", () => {
@@ -843,70 +906,81 @@
       guessEl.max = rangeEl.value;
     });
 
+    document.getElementById("resetGame").addEventListener("click", async () => {
+      if (!(await requireBothPlayers())) return;
+      const range = Number(rangeEl.value);
+      round = {
+        ...defaultRound,
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        range,
+        startedAt: new Date().toISOString()
+      };
+      await shared.set(roundKey, round);
+      secretEl.value = "";
+      guessEl.value = "";
+      refreshFromStore();
+      toast("New duel ready 💕");
+    });
+
     document.getElementById("setSecret").addEventListener("click", async () => {
-      const max = Number(rangeEl.value);
+      if (!(await requireBothPlayers()) || !round.id || round.winner) return;
+      const max = Number(round.range);
       const value = Number(secretEl.value);
-      const host = roleEl.value;
       if (!value || value < 1 || value > max) {
         resultEl.textContent = `Pick a secret from 1 to ${max}.`;
         return;
       }
-      await saveRound({
-        ...defaultRound,
-        phase: "guessing",
-        range: max,
-        secret: value,
-        host,
-        guesser: otherPlayer(host),
-        lastClue: `${playerLabels[host]} started a round. ${playerLabels[otherPlayer(host)]}, take a guess.`
+      const me = roleEl.value;
+      await shared.set(`pf_number_duel_secret_${me}`, {
+        roundId: round.id,
+        value,
+        lockedAt: new Date().toISOString()
       });
       secretEl.value = "";
-      toast("Round started 💕");
+      refreshFromStore();
+      toast("Your number is locked 💕");
     });
 
     document.getElementById("checkGuess").addEventListener("click", async () => {
-      if (round.phase !== "guessing" || roleEl.value !== round.guesser) {
-        resultEl.textContent = "Wait until it is your guessing turn.";
-        return;
-      }
+      if (!(await requireBothPlayers()) || !bothReady()) return;
+      const me = roleEl.value;
+      const opponent = otherPlayer(me);
+      const winner = round.winner || winnerFromStates();
+      if (winner) return;
       const guess = Number(guessEl.value);
       if (!guess || guess < 1 || guess > Number(round.range)) {
         resultEl.textContent = `Guess from 1 to ${round.range}.`;
         return;
       }
 
-      const attempts = Number(round.attempts || 0) + 1;
-      let clue = "Correct 🎉";
-      let phase = "guessing";
-      let winner = null;
-
-      if (guess < Number(round.secret)) clue = `Last guess: ${guess}. Too low, go higher ⬆️`;
-      if (guess > Number(round.secret)) clue = `Last guess: ${guess}. Too high, go lower ⬇️`;
-      if (guess === Number(round.secret)) {
-        phase = "won";
-        winner = round.guesser;
-        scores[winner] = (scores[winner] || 0) + 1;
-        await shared.set("pf_game_scores", scores);
-        clue = `${playerLabels[winner]} got it in ${attempts} attempt${attempts === 1 ? "" : "s"} 🎉`;
-      }
-
-      guessEl.value = "";
-      await saveRound({
-        ...round,
-        phase,
+      const target = Number(secrets[opponent].value);
+      const attempts = Number(playerStates[me].attempts || 0) + 1;
+      const correctAt = guess === target ? new Date().toISOString() : null;
+      let clue = `Last guess: ${guess}. Too low, go higher ⬆️`;
+      if (guess > target) clue = `Last guess: ${guess}. Too high, go lower ⬇️`;
+      if (correctAt) clue = `Correct in ${attempts} attempt${attempts === 1 ? "" : "s"} 🎉`;
+      await shared.set(`pf_number_duel_state_${me}`, {
+        roundId: round.id,
         attempts,
         lastGuess: guess,
-        lastClue: clue,
-        winner
+        clue,
+        correctAt
       });
-      renderScores();
-    });
-
-    document.getElementById("resetGame").addEventListener("click", async () => {
-      secretEl.value = "";
       guessEl.value = "";
-      await saveRound(defaultRound);
-      toast("New round ready 💕");
+      refreshFromStore();
+
+      if (correctAt) {
+        const wonBy = winnerFromStates() || me;
+        round = { ...round, winner: wonBy, winnerAt: playerStates[wonBy].correctAt || correctAt };
+        await shared.set(roundKey, round);
+        scores = { frog: 0, princess: 0, lastScoredRound: null, ...shared.get("pf_game_scores", {}) };
+        if (scores.lastScoredRound !== round.id) {
+          scores[wonBy] = Number(scores[wonBy] || 0) + 1;
+          scores.lastScoredRound = round.id;
+          await shared.set("pf_game_scores", scores);
+        }
+        refreshFromStore();
+      }
     });
 
     document.getElementById("resetScores").addEventListener("click", async () => {
@@ -2126,7 +2200,7 @@
   async function start() {
     markActiveNav();
     addStatusPill();
-    requirePasscode();
+    await requirePasscode();
     await shared.init();
     setupRandomButtons();
     refreshCurrentPage();
