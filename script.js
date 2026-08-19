@@ -12,6 +12,7 @@
   const remoteCache = {};
   const controllers = {};
   let remoteReady = false;
+  let remotePullInFlight = false;
 
   const defaultLoveNotes = [
     "The frog misses his princess 🐸👑",
@@ -48,20 +49,45 @@
   const shared = {
     async init() {
       if (!supabaseClient) return;
-      const { data, error } = await supabaseClient
-        .from("corner_kv")
-        .select("key,value")
-        .eq("site_id", siteId);
-      if (error) {
-        console.warn("Supabase load failed, using localStorage.", error);
+      const connected = await this.pull();
+      if (!connected) {
         toast("Offline mode");
         return;
       }
-      data.forEach((row) => {
-        remoteCache[row.key] = row.value;
-      });
-      remoteReady = true;
       subscribeToRemoteChanges();
+      if (page === "game") {
+        window.setInterval(async () => {
+          if (await this.pull()) refreshCurrentPage(false);
+        }, 4000);
+      }
+    },
+    async pull() {
+      if (!supabaseClient || remotePullInFlight) return false;
+      remotePullInFlight = true;
+      try {
+        const { data, error } = await supabaseClient
+          .from("corner_kv")
+          .select("key,value")
+          .eq("site_id", siteId);
+        if (error) {
+          console.warn("Supabase load failed, using localStorage.", error);
+          return false;
+        }
+        const remoteKeys = new Set();
+        data.forEach((row) => {
+          remoteKeys.add(row.key);
+          remoteCache[row.key] = row.value;
+        });
+        if (remoteReady) {
+          Object.keys(remoteCache).forEach((key) => {
+            if (!remoteKeys.has(key)) delete remoteCache[key];
+          });
+        }
+        remoteReady = true;
+        return true;
+      } finally {
+        remotePullInFlight = false;
+      }
     },
     get(key, fallback = "") {
       if (remoteReady && Object.prototype.hasOwnProperty.call(remoteCache, key)) {
