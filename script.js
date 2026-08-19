@@ -938,7 +938,7 @@
       } else {
         resetButton.textContent = round.id && !winner ? "Duel in progress" : "Waiting for Frog to start";
       }
-      resetButton.disabled = !hasIdentity || !active || me !== "frog";
+      resetButton.disabled = !hasIdentity || me !== "frog";
       document.getElementById("setSecret").disabled = !hasIdentity || !active || !round.id || Boolean(mySecret) || Boolean(winner);
       document.getElementById("checkGuess").disabled = !hasIdentity || !active || !ready || Boolean(winner);
       rangeEl.disabled = Boolean(round.id && !winner);
@@ -995,7 +995,9 @@
 
     document.getElementById("resetGame").addEventListener("click", async () => {
       if (roleEl.value !== "frog") return;
-      if (!(await requireBothPlayers())) return;
+      await controllers.gameHub?.heartbeat?.();
+      await shared.pull(true);
+      refreshFromStore();
       if (round.id && !round.winner && !window.confirm("Restart this duel? Both locked numbers will be cleared.")) {
         renderRound();
         return;
