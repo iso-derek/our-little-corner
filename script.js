@@ -57,15 +57,18 @@
         return;
       }
       subscribeToRemoteChanges();
-      const pollDelay = ["game", "messages"].includes(page) ? 4000 : 10000;
+      const pollDelay = page === "game" ? 2000 : page === "messages" ? 4000 : 10000;
       window.setInterval(async () => {
         if (await this.pull()) refreshCurrentPage(false);
       }, pollDelay);
     },
-    async pull() {
+    async pull(requireFresh = false) {
       if (!supabaseClient) return false;
-      if (remotePullPromise) return remotePullPromise;
-      remotePullPromise = (async () => {
+      if (remotePullPromise) {
+        const connected = await remotePullPromise;
+        if (!requireFresh) return connected;
+      }
+      const pullPromise = (async () => {
         const { data, error } = await supabaseClient
           .from("corner_kv")
           .select("key,value")
@@ -89,10 +92,11 @@
         updateSyncStatus("online");
         return true;
       })();
+      remotePullPromise = pullPromise;
       try {
-        return await remotePullPromise;
+        return await pullPromise;
       } finally {
-        remotePullPromise = null;
+        if (remotePullPromise === pullPromise) remotePullPromise = null;
       }
     },
     get(key, fallback = "") {
@@ -559,6 +563,7 @@
   }
 
   const gamePlayers = ["frog", "princess"];
+  const gamePresenceWindowMs = 90000;
 
   function isGamePlayer(player) {
     return gamePlayers.includes(player);
@@ -566,7 +571,7 @@
 
   function isGamePlayerOnline(player) {
     const seenAt = Date.parse(shared.get(`pf_presence_${player}`, ""));
-    return Number.isFinite(seenAt) && Date.now() - seenAt < 65000;
+    return Number.isFinite(seenAt) && Date.now() - seenAt < gamePresenceWindowMs;
   }
 
   function areBothGamePlayersOnline() {
@@ -609,7 +614,7 @@
       ["frog", "princess"].forEach((player) => {
         const label = document.getElementById(`${player}Presence`);
         const seenAt = Date.parse(shared.get(`pf_presence_${player}`, ""));
-        const online = Number.isFinite(seenAt) && now - seenAt < 65000;
+        const online = Number.isFinite(seenAt) && now - seenAt < gamePresenceWindowMs;
         const displayName = player === "frog" ? "Frog" : "Princess";
         label.classList.toggle("online", online);
         label.lastChild.textContent = online ? ` ${displayName} is here` : ` ${displayName} is away`;
@@ -623,6 +628,9 @@
       }
       await shared.set(`pf_presence_${identity.value}`, new Date().toISOString());
       renderPresence();
+      controllers.numberGame?.refresh();
+      controllers.wordGame?.refresh();
+      controllers.sameGame?.refresh();
     }
 
     tabs.forEach((tab, index) => {
@@ -646,10 +654,16 @@
       controllers.sameGame?.refresh();
     });
 
-    controllers.gameHub = { refresh: renderPresence };
+    const wakeHeartbeat = () => {
+      if (!document.hidden) heartbeat();
+    };
+    controllers.gameHub = { refresh: renderPresence, heartbeat };
     selectGame(localStorage.getItem("pf_active_game") || "number");
     heartbeat();
-    setInterval(heartbeat, 25000);
+    window.addEventListener("focus", wakeHeartbeat);
+    window.addEventListener("online", wakeHeartbeat);
+    document.addEventListener("visibilitychange", wakeHeartbeat);
+    setInterval(wakeHeartbeat, 15000);
   }
 
   function initSameGame() {
@@ -755,7 +769,8 @@
     }
 
     async function choose(choice) {
-      await shared.pull();
+      await controllers.gameHub?.heartbeat?.();
+      await shared.pull(true);
       refreshFromStore();
       if (!isGamePlayer(identity.value) || !areBothGamePlayersOnline() || !round.id || answerFor(identity.value)) return;
       const answer = { roundId: round.id, choice, answeredAt: new Date().toISOString() };
@@ -768,7 +783,8 @@
     optionA.addEventListener("click", () => choose("A"));
     optionB.addEventListener("click", () => choose("B"));
     document.getElementById("nextSameQuestion").addEventListener("click", async () => {
-      await shared.pull();
+      await controllers.gameHub?.heartbeat?.();
+      await shared.pull(true);
       refreshFromStore();
       if (!isGamePlayer(identity.value) || !areBothGamePlayersOnline()) return;
       let nextIndex = Math.floor(Math.random() * questions.length);
@@ -831,7 +847,7 @@
 
     function isOnline(player) {
       const seenAt = Date.parse(shared.get(`pf_presence_${player}`, ""));
-      return Number.isFinite(seenAt) && Date.now() - seenAt < 65000;
+      return Number.isFinite(seenAt) && Date.now() - seenAt < gamePresenceWindowMs;
     }
 
     function bothOnline() {
@@ -903,7 +919,9 @@
 
       if (!hasIdentity) secretStatus.textContent = "Choose Frog or Princess before joining the duel.";
       else if (!active) secretStatus.textContent = "Both Frog and Princess must be here to play.";
-      else if (!round.id) secretStatus.textContent = "Press Start new duel, then lock your secret number.";
+      else if (!round.id) secretStatus.textContent = me === "frog"
+        ? "Start the duel, then lock your secret number."
+        : "Wait for Frog to start the duel, then lock your secret number.";
       else if (winner) secretStatus.textContent = "Start a new duel when you are ready to play again.";
       else if (mySecret) secretStatus.textContent = "Your number is locked. It stays hidden from your opponent.";
       else secretStatus.textContent = `Choose a secret number from 1 to ${round.range}, then lock it.`;
@@ -914,7 +932,13 @@
       else if (!active) guessHelp.textContent = `${playerLabels[opponent]} must be active before you can guess.`;
       else guessHelp.textContent = `Guess ${playerLabels[opponent]}'s number from 1 to ${round.range}.`;
 
-      document.getElementById("resetGame").disabled = !hasIdentity || !active;
+      const resetButton = document.getElementById("resetGame");
+      if (me === "frog") {
+        resetButton.textContent = round.id && !winner ? "Restart duel" : "Start new duel";
+      } else {
+        resetButton.textContent = round.id && !winner ? "Duel in progress" : "Waiting for Frog to start";
+      }
+      resetButton.disabled = !hasIdentity || !active || me !== "frog";
       document.getElementById("setSecret").disabled = !hasIdentity || !active || !round.id || Boolean(mySecret) || Boolean(winner);
       document.getElementById("checkGuess").disabled = !hasIdentity || !active || !ready || Boolean(winner);
       rangeEl.disabled = Boolean(round.id && !winner);
@@ -929,6 +953,8 @@
           : `${playerLabels[winner]} guessed your number first.`;
       } else if (myState.clue) {
         resultEl.textContent = myState.clue;
+      } else if (!round.id) {
+        resultEl.textContent = me === "frog" ? "Start a new duel when both players are ready." : "Waiting for Frog to start the duel.";
       } else if (ready) {
         resultEl.textContent = "The race is live. Make your first guess.";
       } else {
@@ -949,7 +975,8 @@
         resultEl.textContent = "Choose Frog or Princess before joining the game.";
         return false;
       }
-      await shared.pull();
+      await controllers.gameHub?.heartbeat?.();
+      await shared.pull(true);
       refreshFromStore();
       if (bothOnline()) return true;
       resultEl.textContent = "Both Frog and Princess need the Game Room open before you can play.";
@@ -967,7 +994,12 @@
     });
 
     document.getElementById("resetGame").addEventListener("click", async () => {
+      if (roleEl.value !== "frog") return;
       if (!(await requireBothPlayers())) return;
+      if (round.id && !round.winner && !window.confirm("Restart this duel? Both locked numbers will be cleared.")) {
+        renderRound();
+        return;
+      }
       const range = Number(rangeEl.value);
       round = {
         ...defaultRound,
@@ -1214,7 +1246,8 @@
     });
 
     document.getElementById("setSecretWord").addEventListener("click", async () => {
-      await shared.pull();
+      await controllers.gameHub?.heartbeat?.();
+      await shared.pull(true);
       refreshFromStore();
       const length = Number(lengthEl.value);
       const secret = cleanWord(secretEl.value);
@@ -1245,7 +1278,8 @@
     });
 
     document.getElementById("checkWordGuess").addEventListener("click", async () => {
-      await shared.pull();
+      await controllers.gameHub?.heartbeat?.();
+      await shared.pull(true);
       refreshFromStore();
       if (!areBothGamePlayersOnline()) {
         resultEl.textContent = "Both players must be active before guessing.";
