@@ -571,6 +571,7 @@
 
   function setupGameHub() {
     const identity = document.getElementById("gameIdentity");
+    const syncButton = document.getElementById("syncGameState");
     const tabs = [...document.querySelectorAll("[data-game-tab]")];
     if (!identity || !tabs.length) return;
     if (controllers.gameHub) {
@@ -624,8 +625,22 @@
       controllers.sameGame?.refresh();
     }
 
+    async function syncGameState(showConfirmation = false) {
+      if (syncButton) syncButton.disabled = true;
+      await heartbeat();
+      const connected = await shared.pull(true);
+      controllers.numberGame?.refresh();
+      controllers.wordGame?.refresh();
+      controllers.sameGame?.refresh();
+      if (syncButton) syncButton.disabled = false;
+      if (showConfirmation) toast(connected ? "Game refreshed" : "Could not refresh shared game");
+    }
+
     tabs.forEach((tab, index) => {
-      tab.addEventListener("click", () => selectGame(tab.dataset.gameTab));
+      tab.addEventListener("click", () => {
+        selectGame(tab.dataset.gameTab);
+        syncGameState();
+      });
       tab.addEventListener("keydown", (event) => {
         if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
         event.preventDefault();
@@ -639,16 +654,14 @@
     identity.addEventListener("change", async () => {
       if (!["frog", "princess"].includes(identity.value)) return;
       sessionStorage.setItem("pf_game_player", identity.value);
-      await heartbeat();
-      controllers.numberGame?.refresh();
-      controllers.wordGame?.refresh();
-      controllers.sameGame?.refresh();
+      await syncGameState();
     });
 
     const wakeHeartbeat = () => {
-      if (!document.hidden) heartbeat();
+      if (!document.hidden) syncGameState();
     };
-    controllers.gameHub = { refresh: renderPresence, heartbeat };
+    syncButton?.addEventListener("click", () => syncGameState(true));
+    controllers.gameHub = { refresh: renderPresence, heartbeat, sync: syncGameState };
     selectGame(localStorage.getItem("pf_active_game") || "number");
     heartbeat();
     window.addEventListener("focus", wakeHeartbeat);
@@ -1188,10 +1201,11 @@
           : "Wait for a host to start a word round.";
 
       document.getElementById("setSecretWord").disabled = !hasIdentity || isGuessing;
-      document.getElementById("checkWordGuess").disabled = !isGuesser || !isGuessing;
+      document.getElementById("checkWordGuess").disabled = !hasIdentity || isWon;
       lengthEl.disabled = isGuessing;
       secretEl.disabled = isGuessing;
-      guessEl.disabled = !isGuesser || !isGuessing;
+      // A potential guesser can prepare a word while the host's round is syncing.
+      guessEl.disabled = !hasIdentity || isWon;
 
       resultEl.textContent = round.lastClue || defaultRound.lastClue;
       renderHistory();
