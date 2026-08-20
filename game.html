@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow, noarchive">
   <title>Our Game Room</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20260820-1">
 </head>
 <body data-page="game">
   <header class="site-header">
@@ -109,39 +109,41 @@
           <p class="eyebrow">Secret word duel</p>
           <h2>Common Letters</h2>
         </div>
-        <p>Every guess reveals how many letters appear in the secret word.</p>
+        <p>Lock your own word, then race to guess each other's word first.</p>
       </div>
       <div class="game-status-grid">
-        <div class="game-status-card"><span>Round</span><strong id="wordRoundStatus">Waiting for host</strong></div>
-        <div class="game-status-card"><span>Host</span><strong id="wordHostStatus">Not chosen</strong></div>
-        <div class="game-status-card"><span>Guesser</span><strong id="wordGuesserStatus">Not chosen</strong></div>
-        <div class="game-status-card"><span>Attempts</span><strong id="wordAttemptsText">0</strong></div>
+        <div class="game-status-card"><span>Round</span><strong id="wordRoundStatus">Start a new duel</strong></div>
+        <div class="game-status-card"><span>Frog</span><strong id="wordHostStatus">Waiting</strong></div>
+        <div class="game-status-card"><span>Princess</span><strong id="wordGuesserStatus">Waiting</strong></div>
+        <div class="game-status-card"><span>Attempts (F / P)</span><strong id="wordAttemptsText">0 / 0</strong></div>
       </div>
       <div class="game-workspace">
         <div class="host-panel">
-          <h3>Host a word round</h3>
+          <h3>Choose your secret word</h3>
           <label>Difficulty
             <select id="wordLength">
               <option value="3" selected>3-letter word game</option>
               <option value="4">4-letter word game (increased difficulty)</option>
             </select>
           </label>
+          <button class="btn" id="resetWordGame" type="button">Start new word duel</button>
           <label>Secret word
             <input id="secretWord" type="text" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="e.g. LOVE">
           </label>
-          <button class="btn primary" id="setSecretWord" type="button">Start word round 💗</button>
-          <p class="game-secret" id="wordSecretStatus">Choose 3 letters for a quicker game, or 4 for a challenge.</p>
+          <button class="btn primary" id="setSecretWord" type="button">Lock my word 💗</button>
+          <p class="game-secret" id="wordSecretStatus">Start a duel, then lock your word quietly.</p>
         </div>
         <div class="guess-panel">
-          <h3>Guess the word</h3>
-          <p class="game-secret" id="wordGuessHelp">Wait for a host to start a word round.</p>
+          <h3>Guess their word</h3>
+          <p class="game-secret" id="wordGuessHelp">Wait until both secret words are locked.</p>
           <label>Your word guess
             <input id="wordGuess" type="text" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="Type your word">
           </label>
           <button class="btn primary" id="checkWordGuess" type="button">Submit word</button>
         </div>
       </div>
-      <p class="game-result" id="wordGameResult" aria-live="polite">Waiting for a secret word.</p>
+      <p class="game-result" id="wordGameResult" aria-live="polite">Start a word duel when you are ready.</p>
+      <h3 class="mini-title">Shared guesses</h3>
       <div class="word-history" id="wordHistory"></div>
       <div class="game-footer">
         <div class="compact-scoreboard" aria-label="Word game scoreboard">
@@ -149,7 +151,6 @@
           <span>Princess <strong id="princessWordScore">0</strong></span>
         </div>
         <div class="button-row">
-          <button class="btn" id="resetWordGame" type="button">New round</button>
           <button class="btn quiet-btn" id="resetWordScores" type="button">Reset scores</button>
         </div>
       </div>
@@ -191,6 +192,6 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
-  <script src="script.js?v=20260820-4"></script>
+  <script src="script.js?v=20260820-5"></script>
 </body>
 </html>
