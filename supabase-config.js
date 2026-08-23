@@ -5,5 +5,5 @@ window.CORNER_CONFIG = {
   passcode: "derek2steezy_67",
   authEnabled: true,
   localAccountPreview: false,
-  vapidPublicKey: ""
+  vapidPublicKey: "BFEuJXrLIh7lIxE5jBFlKptydDa99Jdpu0WKlXPqGf0DkH4sLOkRdtX6PwhcWEGADq7TsAaMs6bK9qrjk6McAms"
 };

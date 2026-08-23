@@ -4,3 +4,4 @@ supabase-setup.sql
 netlify.toml
 vercel.json
 tests/
+.local/

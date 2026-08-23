@@ -1,4 +1,4 @@
-const CACHE_NAME = "pf-corner-v9";
+const CACHE_NAME = "pf-corner-v10";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -16,7 +16,7 @@ const APP_SHELL = [
   "./script.js?v=20260823-6",
   "./app-enhancements.js?v=20260823-6",
   "./games-plus.js?v=20260823-4",
-  "./supabase-config.js",
+  "./supabase-config.js?v=20260823-2",
   "./site.webmanifest",
   "./images/favicon.svg",
   "./images/icon-192.png",
