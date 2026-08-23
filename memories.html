@@ -4,51 +4,65 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow, noarchive">
-  <title>Memory Wall</title>
-  <link rel="stylesheet" href="style.css">
+  <meta name="description" content="Princess and Frog's shared memory wall, from Alton Towers to our first date.">
+  <meta name="theme-color" content="#f6f0e6">
+  <meta property="og:title" content="Our Memory Wall | Princess + Frog">
+  <meta property="og:description" content="The days we keep coming back to.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://iso-derek.github.io/our-little-corner/images/og-cover.jpg">
+  <title>Our Memory Wall | Princess + Frog</title>
+  <link rel="icon" href="images/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=20260823-4">
 </head>
 <body data-page="memories">
   <header class="site-header">
-    <a class="brand" href="index.html">Princess + Frog</a>
-    <nav class="nav">
-      <a href="index.html">Home 🏠</a>
-      <a href="letters.html">Open When Letters 💌</a>
-      <a href="memories.html">Memory Wall 📸</a>
-      <a href="badges.html">Badges 🏆</a>
-      <a href="game.html">Game Room 🎮</a>
-      <a href="messages.html">Our Chat 💬</a>
-      <a href="gifts.html">Gifts 🎁</a>
-      <a href="quotes.html">Things We Said 🗣️</a>
-      <a href="love.html">Love Notes 💕</a>
+    <a class="brand" href="index.html" aria-label="Princess and Frog home"><span class="brand-monogram" aria-hidden="true">PF</span><span>Princess + Frog</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="siteNav"><span></span><span></span><span></span><span class="sr-only">Open menu</span></button>
+    <nav class="nav" id="siteNav" aria-label="Main navigation">
+      <a href="index.html">Home</a><a href="letters.html">Letters</a><a href="memories.html">Memories</a><a href="game.html">Play</a><a href="messages.html">Chat</a><a href="badges.html">Badges</a><a href="gifts.html">Gifts</a><a href="quotes.html">Things we said</a><a href="love.html">Love notes</a>
     </nav>
   </header>
 
-  <main class="page">
-    <section class="page-title">
-      <p class="eyebrow">Recent → Oldest</p>
-      <h1>Memory Wall 📸</h1>
-      <p>Our little gallery of days that deserve to be kept softly.</p>
+  <main class="page archive-page" id="mainContent">
+    <section class="page-title archive-intro">
+      <div>
+        <p class="eyebrow">Recent to oldest</p>
+        <h1>Memory<br>Wall</h1>
+      </div>
+      <div class="archive-intro-copy">
+        <p>Our little gallery of days that deserve to be kept softly.</p>
+        <button class="manage-toggle" id="memoryEditToggle" type="button" aria-pressed="false"><span aria-hidden="true">+</span> Edit memories</button>
+      </div>
+      <span class="archive-count" aria-hidden="true">11</span>
     </section>
-    <form class="collection-composer" id="memoryForm">
-      <label>Memory title
-        <input id="newMemoryTitle" type="text" maxlength="100" placeholder="Name this memory" required>
-      </label>
-      <label>Date
-        <input id="newMemoryDate" type="text" maxlength="50" placeholder="Add a date">
-      </label>
+
+    <form class="collection-composer archive-composer" id="memoryForm" hidden>
+      <p class="composer-title">Add another memory</p>
+      <label>Memory title<input id="newMemoryTitle" type="text" maxlength="100" placeholder="Name this memory" required></label>
+      <label>Date<input id="newMemoryDate" type="text" maxlength="50" placeholder="Add a date"></label>
       <button class="btn primary" type="submit">Add memory</button>
     </form>
-    <section class="memory-grid" id="memoryGrid"></section>
+
+    <section class="memory-grid" id="memoryGrid" aria-live="polite"></section>
   </main>
 
-  <div class="lightbox" id="lightbox" aria-hidden="true">
-    <button class="lightbox-close" type="button" aria-label="Close image">×</button>
-    <img src="" alt="">
-    <p></p>
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Memory photo viewer" aria-hidden="true">
+    <button class="lightbox-close" type="button" aria-label="Close photo viewer">&times;</button>
+    <button class="lightbox-nav lightbox-prev" type="button" aria-label="Previous photo">&larr;</button>
+    <figure><img src="" alt=""><figcaption><p></p><span class="lightbox-count"></span></figcaption></figure>
+    <button class="lightbox-nav lightbox-next" type="button" aria-label="Next photo">&rarr;</button>
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
-  <script src="script.js?v=20260820-3"></script>
+  <script src="auth.js?v=20260823-4"></script>
+  <script src="script.js?v=20260823-5"></script>
+  <script src="app-enhancements.js?v=20260823-4"></script>
+  <script src="games-plus.js?v=20260823-4"></script>
 </body>
 </html>

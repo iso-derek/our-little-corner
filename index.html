@@ -4,107 +4,127 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow, noarchive">
-  <title>Princess and the Frog's Corner</title>
-  <link rel="stylesheet" href="style.css">
+  <meta name="description" content="Princess and Frog's private corner for memories, letters, games, and the little things we keep.">
+  <meta name="theme-color" content="#f6f0e6">
+  <meta property="og:title" content="Princess + Frog | Our Little Corner">
+  <meta property="og:description" content="Our private corner for memories, letters, games, and the little things we keep.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://iso-derek.github.io/our-little-corner/images/og-cover.jpg">
+  <meta property="og:url" content="https://iso-derek.github.io/our-little-corner/">
+  <title>Princess + Frog | Our Little Corner</title>
+  <link rel="icon" href="images/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=20260823-4">
 </head>
 <body data-page="home">
   <header class="site-header">
-    <a class="brand" href="index.html">Princess + Frog</a>
-    <nav class="nav">
-      <a href="index.html">Home 🏠</a>
-      <a href="letters.html">Open When Letters 💌</a>
-      <a href="memories.html">Memory Wall 📸</a>
-      <a href="badges.html">Badges 🏆</a>
-      <a href="game.html">Game Room 🎮</a>
-      <a href="messages.html">Our Chat 💬</a>
-      <a href="gifts.html">Gifts 🎁</a>
-      <a href="quotes.html">Things We Said 🗣️</a>
-      <a href="love.html">Love Notes 💕</a>
+    <a class="brand" href="index.html" aria-label="Princess and Frog home">
+      <span class="brand-monogram" aria-hidden="true">PF</span>
+      <span>Princess + Frog</span>
+    </a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="siteNav">
+      <span></span><span></span><span></span><span class="sr-only">Open menu</span>
+    </button>
+    <nav class="nav" id="siteNav" aria-label="Main navigation">
+      <a href="index.html">Home</a><a href="letters.html">Letters</a><a href="memories.html">Memories</a>
+      <a href="game.html">Play</a><a href="messages.html">Chat</a><a href="badges.html">Badges</a>
+      <a href="gifts.html">Gifts</a><a href="quotes.html">Things we said</a><a href="love.html">Love notes</a>
     </nav>
   </header>
 
-  <main>
-    <section class="hero">
-      <div class="hero-copy">
+  <main id="mainContent">
+    <section class="home-hero" aria-labelledby="homeTitle">
+      <picture class="home-hero-media">
+        <source media="(max-width: 700px)" srcset="images/optimized/june21-flowers-640.webp">
+        <img src="images/optimized/june21-flowers-1200.webp" alt="Princess holding flowers and a pink rose bear on 21 June" fetchpriority="high">
+      </picture>
+      <div class="home-hero-shade" aria-hidden="true"></div>
+      <div class="home-hero-copy">
         <p class="eyebrow">Our private little fairytale</p>
-        <h1>Welcome to Princess and the Frog's Corner 🐸👑</h1>
-        <p>This is our soft little corner for memories, open when letters, games, badges, gifts, love notes, and all the tiny things that make us us.</p>
+        <h1 id="homeTitle">Princess <span>+</span> Frog</h1>
+        <p class="hero-deck">Our little corner for memories, open when letters, games, badges, gifts, love notes, and all the tiny things that make us us.</p>
         <div class="hero-actions">
-          <button class="btn primary" data-random-love>Random Love Note 💕</button>
-          <a class="btn" href="memories.html">Visit Memory Wall 📸</a>
+          <a class="btn light" href="#june21">Begin our story</a>
+          <button class="text-action" type="button" data-random-love>Pull a love note <span aria-hidden="true">&rarr;</span></button>
         </div>
         <p class="random-output" id="homeRandomNote" aria-live="polite"></p>
       </div>
-      <div class="milestone-card">
-        <span class="sparkle">💕</span>
-        <h2>She said yes</h2>
-        <p class="date-pill">21 June</p>
-        <p>The day I asked you out and our story became even more special.</p>
-      </div>
+      <a class="hero-date" href="#june21" aria-label="Go to our 21 June story"><span>21</span><small>June</small></a>
     </section>
 
-    <section class="section">
-      <div class="section-heading">
+    <section class="story-chapter" id="june21" aria-labelledby="juneTitle">
+      <div class="chapter-rule" aria-hidden="true"><span>01</span></div>
+      <header class="chapter-heading">
         <p class="eyebrow">The important day</p>
-        <h2>She Said Yes 💕</h2>
-      </div>
-      <div class="milestone-wide june21-story">
+        <h2 id="juneTitle">The best yes<br>I&rsquo;ve heard.</h2>
+      </header>
+      <div class="june21-editorial">
         <div class="june21-copy">
-          <p class="date-pill">21 June</p>
-          <h3>The day she said yes</h3>
-          <p>On the 21st of June, I asked you out, and that day became one of my favourite memories. Flowers, kind of rushed planning 😭, but a very beautiful and monumental moment to me. One very important question, and the best yes I've heard.</p>
-          <p class="june21-signoff">The beginning of our favourite chapter. 💕</p>
+          <p class="chapter-date">21 June</p>
+          <p class="story-lede">On the 21st of June, I asked you out, and that day became one of my favourite memories.</p>
+          <p>Flowers, kind of rushed planning 😭, but a very beautiful and monumental moment to me. One very important question, and the best yes I've heard.</p>
+          <p class="june21-signoff">The beginning of our favourite chapter.</p>
         </div>
         <div class="june21-gallery" aria-label="Photos from 21 June">
           <figure class="june21-photo featured">
-            <img src="images/june21-flowers.png" alt="Princess holding her flowers and pink rose bear" data-story-title="Flowers, the rose bear, and her smile">
-            <figcaption>Flowers and her smile</figcaption>
+            <img loading="lazy" decoding="async" src="images/optimized/june21-flowers-1200.webp" srcset="images/optimized/june21-flowers-640.webp 640w, images/optimized/june21-flowers-1200.webp 1200w" sizes="(max-width: 760px) 92vw, 47vw" alt="Princess holding her flowers and pink rose bear" data-story-title="Flowers, the rose bear, and her smile">
+            <figcaption><span>01</span> Flowers and her smile</figcaption>
           </figure>
           <figure class="june21-photo">
-            <img src="images/june21-painting.png" alt="Princess holding up a handmade heart painting" data-story-title="A handmade moment">
-            <figcaption>A handmade moment</figcaption>
+            <img loading="lazy" decoding="async" src="images/optimized/june21-painting-640.webp" srcset="images/optimized/june21-painting-640.webp 640w, images/optimized/june21-painting-1200.webp 1200w" sizes="(max-width: 760px) 44vw, 22vw" alt="Princess holding up a handmade heart painting" data-story-title="A handmade moment">
+            <figcaption><span>02</span> A handmade moment</figcaption>
+          </figure>
+          <figure class="june21-photo wide">
+            <img src="images/optimized/june21-surprise-1200.webp" srcset="images/optimized/june21-surprise-640.webp 640w, images/optimized/june21-surprise-1200.webp 1200w" sizes="(max-width: 760px) 92vw, 35vw" alt="Princess seeing the red balloon surprise" data-story-title="The surprise">
+            <figcaption><span>03</span> The surprise</figcaption>
           </figure>
           <figure class="june21-photo">
-            <img src="images/june21-surprise.png" alt="Princess seeing the red balloon surprise" data-story-title="The surprise">
-            <figcaption>The surprise</figcaption>
+            <img src="images/optimized/june21-question-640.webp" srcset="images/optimized/june21-question-640.webp 640w, images/optimized/june21-question-1200.webp 1200w" sizes="(max-width: 760px) 44vw, 22vw" alt="Frog wearing the will you be my girlfriend shirt" data-story-title="The question">
+            <figcaption><span>04</span> The question</figcaption>
           </figure>
-          <figure class="june21-photo">
-            <img src="images/june21-question.png" alt="Frog wearing the will you be my girlfriend shirt" data-story-title="The question">
-            <figcaption>The question</figcaption>
-          </figure>
-          <figure class="june21-photo">
-            <img src="images/june21-yes.png" alt="The girlfriend proposal shirt with yes checked" data-story-title="She checked yes">
-            <figcaption>She checked yes 💕</figcaption>
+          <figure class="june21-photo wide">
+            <img src="images/optimized/june21-yes-1200.webp" srcset="images/optimized/june21-yes-640.webp 640w, images/optimized/june21-yes-1200.webp 1200w" sizes="(max-width: 760px) 92vw, 35vw" alt="The girlfriend proposal shirt with yes checked" data-story-title="She checked yes">
+            <figcaption><span>05</span> She checked yes</figcaption>
           </figure>
         </div>
       </div>
     </section>
 
-    <section class="section">
-      <div class="section-heading">
+    <section class="corner-directory" aria-labelledby="cornerTitle">
+      <div class="chapter-rule" aria-hidden="true"><span>02</span></div>
+      <header class="directory-heading">
         <p class="eyebrow">Choose a corner</p>
-        <h2>Little places for our story</h2>
-      </div>
+        <h2 id="cornerTitle">Where should<br>we go next?</h2>
+      </header>
       <div class="feature-grid">
-        <a class="feature-card" href="letters.html"><span>💌</span><strong>Open When Letters</strong><small>Notes for every mood.</small></a>
-        <a class="feature-card" href="memories.html"><span>📸</span><strong>Memory Wall</strong><small>Recent to oldest moments.</small></a>
-        <a class="feature-card" href="badges.html"><span>🏆</span><strong>Achievement Badges</strong><small>Unlock our little wins.</small></a>
-        <a class="feature-card" href="game.html"><span>🎮</span><strong>Our Game Room</strong><small>Three live games for two.</small></a>
-        <a class="feature-card" href="messages.html"><span>💬</span><strong>Our Chat</strong><small>Leave a note for later.</small></a>
-        <a class="feature-card" href="gifts.html"><span>🎁</span><strong>Gifts Corner</strong><small>Surprises for my princess.</small></a>
-        <a class="feature-card" href="love.html"><span>💕</span><strong>Love Notes</strong><small>Sweet things on demand.</small></a>
+        <a class="feature-card feature-main" href="memories.html"><span class="feature-number">01</span><strong>Memory Wall</strong><small>Our days, kept in order.</small><span class="feature-arrow" aria-hidden="true">&nearr;</span></a>
+        <a class="feature-card feature-main" href="letters.html"><span class="feature-number">02</span><strong>Open When Letters</strong><small>Two notes for every mood.</small><span class="feature-arrow" aria-hidden="true">&nearr;</span></a>
+        <a class="feature-card" href="game.html"><span class="feature-number">03</span><strong>Our Game Room</strong><small>Three live games for two.</small><span class="feature-arrow" aria-hidden="true">&nearr;</span></a>
+        <a class="feature-card" href="messages.html"><span class="feature-number">04</span><strong>Our Chat</strong><small>Leave a note for later.</small><span class="feature-arrow" aria-hidden="true">&nearr;</span></a>
+        <a class="feature-card" href="badges.html"><span class="feature-number">05</span><strong>Achievement Badges</strong><small>Unlock our little wins.</small><span class="feature-arrow" aria-hidden="true">&nearr;</span></a>
+        <a class="feature-card" href="gifts.html"><span class="feature-number">06</span><strong>Gifts Corner</strong><small>Surprises for my princess.</small><span class="feature-arrow" aria-hidden="true">&nearr;</span></a>
+        <a class="feature-card" href="quotes.html"><span class="feature-number">07</span><strong>Things We Said</strong><small>Lines worth remembering.</small><span class="feature-arrow" aria-hidden="true">&nearr;</span></a>
+        <a class="feature-card" href="love.html"><span class="feature-number">08</span><strong>Love Notes</strong><small>Sweet things on demand.</small><span class="feature-arrow" aria-hidden="true">&nearr;</span></a>
       </div>
     </section>
   </main>
 
-  <div class="lightbox" id="lightbox" aria-hidden="true">
-    <button class="lightbox-close" type="button" aria-label="Close image">×</button>
-    <img src="" alt="">
-    <p></p>
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer" aria-hidden="true">
+    <button class="lightbox-close" type="button" aria-label="Close photo viewer">&times;</button>
+    <button class="lightbox-nav lightbox-prev" type="button" aria-label="Previous photo">&larr;</button>
+    <figure><img src="" alt=""><figcaption><p></p><span class="lightbox-count"></span></figcaption></figure>
+    <button class="lightbox-nav lightbox-next" type="button" aria-label="Next photo">&rarr;</button>
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
-  <script src="script.js?v=20260820-3"></script>
+  <script src="auth.js?v=20260823-4"></script>
+  <script src="script.js?v=20260823-5"></script>
+  <script src="app-enhancements.js?v=20260823-4"></script>
+  <script src="games-plus.js?v=20260823-4"></script>
 </body>
 </html>

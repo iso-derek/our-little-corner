@@ -4,8 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow, noarchive">
-  <title>Things We Said</title>
-  <link rel="stylesheet" href="style.css">
+  <meta name="description" content="The little lines Princess and Frog want to remember.">
+  <meta name="theme-color" content="#f6f0e6">
+  <meta property="og:title" content="Things We Said | Princess + Frog">
+  <meta property="og:image" content="https://iso-derek.github.io/our-little-corner/images/og-cover.jpg">
+  <title>Things We Said | Princess + Frog</title>
+  <link rel="icon" href="images/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=20260823-4">
 </head>
 <body data-page="quotes">
   <header class="site-header">
@@ -30,7 +40,8 @@
       <p>Funny, cute, and dangerously sweet quotes from our corner.</p>
     </section>
 
-    <section class="add-panel">
+    <div class="page-toolbar"><button class="manage-toggle" id="quoteEditToggle" type="button" aria-pressed="false"><span aria-hidden="true">+</span> Edit quotes</button></div>
+    <section class="add-panel" id="quoteAddPanel" hidden>
       <input id="quoteInput" type="text" aria-label="New quote" placeholder="Add a quote">
       <button class="btn primary" id="addQuote" type="button">Add quote</button>
     </section>
@@ -40,6 +51,9 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
-  <script src="script.js?v=20260820-3"></script>
+  <script src="auth.js?v=20260823-4"></script>
+  <script src="script.js?v=20260823-5"></script>
+  <script src="app-enhancements.js?v=20260823-4"></script>
+  <script src="games-plus.js?v=20260823-4"></script>
 </body>
 </html>

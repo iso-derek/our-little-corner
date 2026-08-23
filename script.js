@@ -4,8 +4,9 @@
   const config = window.CORNER_CONFIG || {};
   const hasSupabaseConfig = Boolean(config.supabaseUrl && config.supabaseAnonKey && window.supabase);
   const supabaseClient = hasSupabaseConfig
-    ? window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey)
+    ? (window.CORNER_SUPABASE_CLIENT || window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey))
     : null;
+  if (supabaseClient) window.CORNER_SUPABASE_CLIENT = supabaseClient;
   const siteId = config.siteId || "princess-frog-corner";
   const passcode = config.passcode || "";
   const authKey = `pf_auth_${siteId}`;
@@ -14,6 +15,10 @@
   let remoteReady = false;
   let remotePullPromise = null;
   let syncStatusEl = null;
+  let lightboxItems = [];
+  let lightboxIndex = 0;
+  let lightboxTrigger = null;
+  let lightboxTouchStart = 0;
 
   const defaultLoveNotes = [
     "The frog misses his princess 🐸👑",
@@ -123,6 +128,7 @@
         toast("Saved on this device");
       } else {
         updateSyncStatus("online");
+        window.CornerNotifications?.fromSharedChange?.(key, value);
       }
     },
     async uploadPhoto(file, memoryId) {
@@ -145,6 +151,16 @@
     }
   };
 
+  window.CornerRuntime = {
+    shared,
+    toast,
+    config,
+    supabaseClient,
+    refresh() {
+      refreshCurrentPage(false);
+    }
+  };
+
   function subscribeToRemoteChanges() {
     if (!supabaseClient) return;
     supabaseClient
@@ -161,6 +177,7 @@
           if (payload.eventType === "DELETE") delete remoteCache[payload.old.key];
           if (payload.new) remoteCache[payload.new.key] = payload.new.value;
           refreshCurrentPage(false);
+          document.dispatchEvent(new CustomEvent("corner:remote-change", { detail: payload }));
         }
       )
       .subscribe();
@@ -199,6 +216,98 @@
       ? "Checking the shared Supabase connection"
       : "Add Supabase details in supabase-config.js to sync across devices";
     header.appendChild(syncStatusEl);
+  }
+
+  function setupSiteChrome() {
+    const header = document.querySelector(".site-header");
+    const main = document.querySelector("main");
+    if (!header || !main) return;
+
+    if (!document.querySelector(".skip-link")) {
+      const skipLink = document.createElement("a");
+      skipLink.className = "skip-link";
+      skipLink.href = "#mainContent";
+      skipLink.textContent = "Skip to content";
+      document.body.prepend(skipLink);
+    }
+    if (!main.id) main.id = "mainContent";
+
+    const standardTitle = main.querySelector(".page-title:not(.archive-intro):not(.letters-intro)");
+    if (standardTitle && !standardTitle.querySelector(".page-title-heading")) {
+      const eyebrow = standardTitle.querySelector(":scope > .eyebrow");
+      const heading = standardTitle.querySelector(":scope > h1");
+      if (eyebrow && heading) {
+        const group = document.createElement("div");
+        group.className = "page-title-heading";
+        standardTitle.insertBefore(group, standardTitle.firstChild);
+        group.append(eyebrow, heading);
+      }
+    }
+
+    const brand = header.querySelector(".brand");
+    if (brand && !brand.querySelector(".brand-monogram")) {
+      brand.innerHTML = '<span class="brand-monogram" aria-hidden="true">PF</span><span>Princess + Frog</span>';
+      brand.setAttribute("aria-label", "Princess and Frog home");
+    }
+
+    const nav = header.querySelector(".nav");
+    if (nav) {
+      nav.id = "siteNav";
+      nav.setAttribute("aria-label", "Main navigation");
+      const labels = {
+        "index.html": "Home",
+        "letters.html": "Letters",
+        "memories.html": "Memories",
+        "game.html": "Play",
+        "messages.html": "Chat",
+        "badges.html": "Badges",
+        "gifts.html": "Gifts",
+        "quotes.html": "Things we said",
+        "love.html": "Love notes"
+      };
+      nav.querySelectorAll("a").forEach((link) => {
+        const href = link.getAttribute("href");
+        if (labels[href]) link.textContent = labels[href];
+      });
+    }
+
+    let menuToggle = header.querySelector(".menu-toggle");
+    if (!menuToggle) {
+      menuToggle = document.createElement("button");
+      menuToggle.className = "menu-toggle";
+      menuToggle.type = "button";
+      menuToggle.setAttribute("aria-expanded", "false");
+      menuToggle.setAttribute("aria-controls", "siteNav");
+      menuToggle.innerHTML = '<span></span><span></span><span></span><span class="sr-only">Open menu</span>';
+      header.insertBefore(menuToggle, nav);
+    }
+
+    const closeMenu = () => {
+      document.body.classList.remove("menu-open");
+      menuToggle.setAttribute("aria-expanded", "false");
+      menuToggle.querySelector(".sr-only").textContent = "Open menu";
+    };
+    menuToggle.addEventListener("click", () => {
+      const open = !document.body.classList.contains("menu-open");
+      document.body.classList.toggle("menu-open", open);
+      menuToggle.setAttribute("aria-expanded", String(open));
+      menuToggle.querySelector(".sr-only").textContent = open ? "Close menu" : "Open menu";
+    });
+    nav?.querySelectorAll("a").forEach((link) => link.addEventListener("click", closeMenu));
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && document.body.classList.contains("menu-open")) closeMenu();
+    });
+
+    const onScroll = () => header.classList.toggle("scrolled", window.scrollY > 20);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+
+    if (!document.querySelector(".site-footer")) {
+      const footer = document.createElement("footer");
+      footer.className = "site-footer";
+      footer.innerHTML = '<span class="footer-mark" aria-hidden="true">PF</span><p>Our little corner, kept together.</p><a href="#mainContent">Back to top <span aria-hidden="true">&uarr;</span></a>';
+      document.body.insertBefore(footer, document.getElementById("toast"));
+    }
   }
 
   function updateSyncStatus(mode) {
@@ -258,7 +367,10 @@
   function markActiveNav() {
     const current = location.pathname.split("/").pop() || "index.html";
     document.querySelectorAll(".nav a").forEach((link) => {
-      if (link.getAttribute("href") === current) link.classList.add("active");
+      if (link.getAttribute("href") === current) {
+        link.classList.add("active");
+        link.setAttribute("aria-current", "page");
+      }
     });
   }
 
@@ -274,7 +386,11 @@
     const notes = getLoveNotes();
     const note = notes[Math.floor(Math.random() * notes.length)] || "You are loved 💕";
     const output = document.getElementById("homeRandomNote") || document.getElementById("loveRandomNote");
-    if (output) output.textContent = note;
+    if (output) {
+      output.classList.remove("note-reveal");
+      output.textContent = note;
+      requestAnimationFrame(() => output.classList.add("note-reveal"));
+    }
   }
 
   function setupRandomButtons() {
@@ -488,14 +604,53 @@
     renderPhotos();
   }
 
-  function openLightbox(src, title) {
+  function collectLightboxItems() {
+    return [...document.querySelectorAll(".june21-photo img, .memory-photo img, .gift-card .managed-photo img")]
+      .filter((img) => !img.hidden && img.getAttribute("src"))
+      .map((img) => ({
+        src: img.currentSrc || img.src,
+        title: img.dataset.storyTitle || img.alt,
+        trigger: img
+      }));
+  }
+
+  function renderLightboxItem() {
+    const lightbox = document.getElementById("lightbox");
+    const item = lightboxItems[lightboxIndex];
+    if (!lightbox || !item) return;
+    const image = lightbox.querySelector("img");
+    image.src = item.src;
+    image.alt = item.title;
+    lightbox.querySelector("p").textContent = item.title;
+    const count = lightbox.querySelector(".lightbox-count");
+    if (count) count.textContent = `${lightboxIndex + 1} / ${lightboxItems.length}`;
+    lightbox.querySelectorAll(".lightbox-nav").forEach((button) => {
+      button.hidden = lightboxItems.length < 2;
+    });
+  }
+
+  function moveLightbox(direction) {
+    if (lightboxItems.length < 2) return;
+    lightboxIndex = (lightboxIndex + direction + lightboxItems.length) % lightboxItems.length;
+    renderLightboxItem();
+  }
+
+  function openLightbox(src, title, trigger = document.activeElement) {
     const lightbox = document.getElementById("lightbox");
     if (!lightbox) return;
-    lightbox.querySelector("img").src = src;
-    lightbox.querySelector("img").alt = title;
-    lightbox.querySelector("p").textContent = title;
+    lightboxItems = collectLightboxItems();
+    let index = lightboxItems.findIndex((item) => item.src === src || item.trigger === trigger);
+    if (index < 0) {
+      lightboxItems.push({ src, title, trigger });
+      index = lightboxItems.length - 1;
+    }
+    lightboxIndex = index;
+    lightboxTrigger = trigger;
+    renderLightboxItem();
     lightbox.classList.add("open");
     lightbox.setAttribute("aria-hidden", "false");
+    document.body.classList.add("lightbox-open");
+    lightbox.querySelector(".lightbox-close")?.focus({ preventScroll: true });
   }
 
   function closeLightbox() {
@@ -503,16 +658,43 @@
     if (!lightbox) return;
     lightbox.classList.remove("open");
     lightbox.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("lightbox-open");
+    if (lightboxTrigger instanceof HTMLElement) lightboxTrigger.focus({ preventScroll: true });
   }
 
   function setupLightbox() {
     const lightbox = document.getElementById("lightbox");
-    if (!lightbox) return;
+    if (!lightbox || lightbox.dataset.ready === "true") return;
+    lightbox.dataset.ready = "true";
     lightbox.addEventListener("click", (event) => {
       if (event.target === lightbox || event.target.classList.contains("lightbox-close")) closeLightbox();
     });
+    lightbox.querySelector(".lightbox-prev")?.addEventListener("click", () => moveLightbox(-1));
+    lightbox.querySelector(".lightbox-next")?.addEventListener("click", () => moveLightbox(1));
+    lightbox.addEventListener("touchstart", (event) => {
+      lightboxTouchStart = event.changedTouches[0].clientX;
+    }, { passive: true });
+    lightbox.addEventListener("touchend", (event) => {
+      const distance = event.changedTouches[0].clientX - lightboxTouchStart;
+      if (Math.abs(distance) > 48) moveLightbox(distance > 0 ? -1 : 1);
+    }, { passive: true });
     document.addEventListener("keydown", (event) => {
+      if (!lightbox.classList.contains("open")) return;
       if (event.key === "Escape") closeLightbox();
+      if (event.key === "ArrowLeft") moveLightbox(-1);
+      if (event.key === "ArrowRight") moveLightbox(1);
+      if (event.key === "Tab") {
+        const controls = [...lightbox.querySelectorAll("button:not([hidden])")];
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
     });
   }
 
@@ -582,7 +764,11 @@
     const panels = {
       number: document.getElementById("numberGamePanel"),
       word: document.getElementById("wordGamePanel"),
-      same: document.getElementById("sameGamePanel")
+      same: document.getElementById("sameGamePanel"),
+      would: document.getElementById("wouldGamePanel"),
+      trivia: document.getElementById("triviaGamePanel"),
+      truth: document.getElementById("truthGamePanel"),
+      memory: document.getElementById("memoryGamePanel")
     };
     const savedIdentity = sessionStorage.getItem("pf_game_player");
     identity.value = ["frog", "princess"].includes(savedIdentity) ? savedIdentity : "";
@@ -632,6 +818,7 @@
       controllers.numberGame?.refresh();
       controllers.wordGame?.refresh();
       controllers.sameGame?.refresh();
+      window.CornerGames?.refresh?.();
       if (syncButton) syncButton.disabled = false;
       if (showConfirmation) toast(connected ? "Game refreshed" : "Could not refresh shared game");
     }
@@ -721,6 +908,11 @@
         lastScoredRound: round.id
       };
       await shared.set("pf_same_stats", stats);
+      await window.CornerGames?.recordMatch?.({
+        id: round.id,
+        game: "same",
+        result: frog === princess ? "Same answer" : "Different answers"
+      });
       render();
     }
 
@@ -916,10 +1108,8 @@
             : "Locking numbers";
 
       if (!hasIdentity) secretStatus.textContent = "Choose Frog or Princess before joining the duel.";
-      else if (!round.id) secretStatus.textContent = me === "frog"
-        ? "Start the duel, then lock your secret number."
-        : "Wait for Frog to start the duel, then lock your secret number.";
-      else if (winner) secretStatus.textContent = "Start a new duel when you are ready to play again.";
+      else if (!round.id) secretStatus.textContent = "Start the duel, then lock your secret number.";
+      else if (winner) secretStatus.textContent = "Tap Play again, then choose a fresh secret number.";
       else if (mySecret) secretStatus.textContent = "Your number is locked. It stays hidden from your opponent.";
       else secretStatus.textContent = `Choose a secret number from 1 to ${round.range}, then lock it.`;
 
@@ -929,12 +1119,11 @@
       else guessHelp.textContent = `Guess ${playerLabels[opponent]}'s number from 1 to ${round.range}.`;
 
       const resetButton = document.getElementById("resetGame");
-      if (me === "frog") {
-        resetButton.textContent = round.id && !winner ? "Restart duel" : "Start new duel";
-      } else {
-        resetButton.textContent = round.id && !winner ? "Duel in progress" : "Waiting for Frog to start";
-      }
-      resetButton.disabled = !hasIdentity || me !== "frog";
+      if (winner) resetButton.textContent = "Play again";
+      else if (!round.id) resetButton.textContent = "Start duel";
+      else resetButton.textContent = me === "frog" ? "Restart round" : "Round in progress";
+      resetButton.disabled = !hasIdentity || Boolean(round.id && !winner && me !== "frog");
+      resetButton.classList.toggle("primary", Boolean(hasIdentity && (!round.id || winner)));
       document.getElementById("setSecret").disabled = !hasIdentity || Boolean(mySecret) || Boolean(winner);
       document.getElementById("checkGuess").disabled = !hasIdentity || !ready || Boolean(winner);
       rangeEl.disabled = Boolean(round.id && !winner);
@@ -946,12 +1135,12 @@
         resultEl.textContent = "Choose Frog or Princess to join the game.";
       } else if (winner) {
         resultEl.textContent = winner === me
-          ? `You guessed ${playerLabels[opponent]}'s number first 🎉`
-          : `${playerLabels[winner]} guessed your number first.`;
+          ? `You guessed ${playerLabels[opponent]}'s number first. Tap Play again for a fresh duel 🎉`
+          : `${playerLabels[winner]} guessed your number first. Tap Play again for a fresh duel.`;
       } else if (myState.clue) {
         resultEl.textContent = myState.clue;
       } else if (!round.id) {
-        resultEl.textContent = me === "frog" ? "Start a new duel when both players are ready." : "Waiting for Frog to start the duel.";
+        resultEl.textContent = "Either player can start a new duel when you are ready.";
       } else if (ready) {
         resultEl.textContent = "The race is live. Make your first guess.";
       } else {
@@ -989,10 +1178,14 @@
     });
 
     document.getElementById("resetGame").addEventListener("click", async () => {
-      if (roleEl.value !== "frog") return;
+      if (!isGamePlayer(roleEl.value)) return;
       await controllers.gameHub?.heartbeat?.();
       await shared.pull(true);
       refreshFromStore();
+      if (round.id && !round.winner && roleEl.value !== "frog") {
+        toast("This round is still in progress");
+        return;
+      }
       if (round.id && !round.winner && !window.confirm("Restart this duel? Both locked numbers will be cleared.")) {
         renderRound();
         return;
@@ -1014,9 +1207,7 @@
     document.getElementById("setSecret").addEventListener("click", async () => {
       if (!(await refreshBeforeNumberAction()) || round.winner) return;
       if (!round.id) {
-        resultEl.textContent = roleEl.value === "frog"
-          ? "Start a new duel before locking your number."
-          : "Waiting for Frog to start the duel. Your number will stay entered.";
+        resultEl.textContent = "Tap Start duel before locking your number. Your number will stay entered.";
         return;
       }
       const max = Number(round.range);
@@ -1074,6 +1265,12 @@
           scores.lastScoredRound = round.id;
           await shared.set("pf_game_scores", scores);
         }
+        await window.CornerGames?.recordMatch?.({
+          id: round.id,
+          game: "number",
+          winner: wonBy,
+          result: `${playerStates[wonBy].attempts || attempts} guesses`
+        });
         refreshFromStore();
       }
     });
@@ -1232,10 +1429,8 @@
             : "Locking words";
 
       if (!hasIdentity) secretStatus.textContent = "Choose Frog or Princess before joining the word duel.";
-      else if (!round.id) secretStatus.textContent = me === "frog"
-        ? "Choose the difficulty, start the duel, then lock your word."
-        : "Prepare your word while Frog starts the duel.";
-      else if (winner) secretStatus.textContent = "Start a new word duel when you are ready.";
+      else if (!round.id) secretStatus.textContent = "Choose the difficulty, start the duel, then lock your word.";
+      else if (winner) secretStatus.textContent = "Tap Play again, then choose a fresh secret word.";
       else if (mySecret) secretStatus.textContent = "Your word is locked and hidden from your opponent.";
       else secretStatus.textContent = `Choose a ${round.length}-letter secret word, then lock it.`;
 
@@ -1245,8 +1440,11 @@
       else guessHelp.textContent = `Guess ${playerLabels[opponent]}'s ${round.length}-letter word.`;
 
       const resetButton = document.getElementById("resetWordGame");
-      resetButton.textContent = round.id && !winner ? "Restart word duel" : "Start new word duel";
-      resetButton.disabled = !hasIdentity || me !== "frog";
+      if (winner) resetButton.textContent = "Play again";
+      else if (!round.id) resetButton.textContent = "Start word duel";
+      else resetButton.textContent = me === "frog" ? "Restart round" : "Round in progress";
+      resetButton.disabled = !hasIdentity || Boolean(round.id && !winner && me !== "frog");
+      resetButton.classList.toggle("primary", Boolean(hasIdentity && (!round.id || winner)));
       document.getElementById("setSecretWord").disabled = !hasIdentity || Boolean(mySecret) || Boolean(winner);
       document.getElementById("checkWordGuess").disabled = !hasIdentity || Boolean(winner);
       lengthEl.disabled = Boolean(round.id && !winner);
@@ -1257,12 +1455,12 @@
       if (!hasIdentity) resultEl.textContent = "Choose Frog or Princess to join the word duel.";
       else if (winner) {
         resultEl.textContent = winner === me
-          ? `You guessed ${playerLabels[opponent]}'s word first. Their word was ${secrets[opponent]?.value}.`
-          : `${playerLabels[winner]} guessed your word first. Their word was ${secrets[opponent]?.value}.`;
+          ? `You guessed ${playerLabels[opponent]}'s word first. Their word was ${secrets[opponent]?.value}. Tap Play again for a fresh duel.`
+          : `${playerLabels[winner]} guessed your word first. Their word was ${secrets[opponent]?.value}. Tap Play again for a fresh duel.`;
       } else if (latestGuess) {
         resultEl.textContent = `${latestGuess.guess} has ${latestGuess.common} / ${round.length} letters in common.`;
       } else if (!round.id) {
-        resultEl.textContent = me === "frog" ? "Start a new word duel." : "Waiting for Frog to start the word duel.";
+        resultEl.textContent = "Either player can start a new word duel.";
       } else if (ready) {
         resultEl.textContent = "Both words are locked. Start guessing.";
       } else {
@@ -1311,10 +1509,14 @@
     });
 
     document.getElementById("resetWordGame").addEventListener("click", async () => {
-      if (roleEl.value !== "frog") return;
+      if (!isGamePlayer(roleEl.value)) return;
       await controllers.gameHub?.heartbeat?.();
       await shared.pull(true);
       refreshFromStore();
+      if (round.id && !round.winner && roleEl.value !== "frog") {
+        toast("This round is still in progress");
+        return;
+      }
       if (round.id && !round.winner && !window.confirm("Restart this word duel? Both secret words and all guesses will be cleared.")) {
         renderRound();
         return;
@@ -1335,9 +1537,7 @@
     document.getElementById("setSecretWord").addEventListener("click", async () => {
       if (!(await refreshBeforeWordAction()) || round.winner) return;
       if (!round.id) {
-        resultEl.textContent = roleEl.value === "frog"
-          ? "Start a new word duel before locking your word."
-          : "Waiting for Frog to start the duel. Your word will stay entered.";
+        resultEl.textContent = "Tap Start word duel before locking your word. Your word will stay entered.";
         return;
       }
       const secret = cleanWord(secretEl.value);
@@ -1398,6 +1598,12 @@
           scores.lastScoredRound = round.id;
           await shared.set("pf_word_scores", scores);
         }
+        await window.CornerGames?.recordMatch?.({
+          id: round.id,
+          game: "word",
+          winner: wonBy,
+          result: `${playerStates[wonBy].attempts || attempts} guesses`
+        });
         refreshFromStore();
       }
     });
@@ -1630,6 +1836,7 @@
     const list = document.getElementById("lettersList");
     const addForm = document.getElementById("letterForm");
     const titleInput = document.getElementById("newLetterTitle");
+    const editToggle = document.getElementById("letterEditToggle");
     if (!list || !addForm) return;
     if (controllers.managedLetters) {
       controllers.managedLetters.refresh();
@@ -1646,6 +1853,20 @@
       { id: "love", title: "Open when you need love 💕🫶" }
     ];
     let categories = getManagedItems(collectionKey, defaults);
+    let editing = false;
+
+    function setEditing(next) {
+      editing = next;
+      document.body.classList.toggle("is-editing-letters", editing);
+      addForm.hidden = !editing;
+      editToggle?.setAttribute("aria-pressed", String(editing));
+      if (editToggle) editToggle.innerHTML = editing
+        ? '<span aria-hidden="true">&times;</span> Finish editing'
+        : '<span aria-hidden="true">+</span> Edit letters';
+      list.querySelectorAll("textarea").forEach((textarea) => {
+        textarea.readOnly = !editing;
+      });
+    }
 
     function render() {
       if (!categories.length) {
@@ -1653,9 +1874,14 @@
         return;
       }
       list.innerHTML = categories.map((item, index) =>
-        '<article class="letter-card ' + (index === 0 ? "open" : "") + '" data-item-id="' + escapeHtml(item.id) + '">' +
-          '<div class="letter-card-head">' +
-            '<button class="letter-toggle" type="button"><strong>' + escapeHtml(item.title) + '</strong><span>⌄</span></button>' +
+        '<article class="letter-card envelope-card" data-item-id="' + escapeHtml(item.id) + '">' +
+          '<div class="letter-card-head envelope-front">' +
+            '<button class="letter-toggle" type="button" aria-expanded="false">' +
+              '<span class="letter-index">' + String(index + 1).padStart(2, "0") + '</span>' +
+              '<strong>' + escapeHtml(item.title) + '</strong>' +
+              '<span class="envelope-seal" aria-hidden="true">PF</span>' +
+              '<span class="letter-open-label">Open <span aria-hidden="true">&darr;</span></span>' +
+            '</button>' +
             '<div class="item-actions">' +
               '<button class="item-action edit-item" type="button" title="Rename letter" aria-label="Rename letter">✎</button>' +
               '<button class="item-action delete-item" type="button" title="Delete letter" aria-label="Delete letter">×</button>' +
@@ -1666,17 +1892,22 @@
             '<button class="btn primary" type="submit">Save</button>' +
             '<button class="btn cancel-edit" type="button">Cancel</button>' +
           '</form>' +
-          '<div class="letter-content">' +
-            '<div><label>Frog\'s note 🐸<textarea id="derek-' + escapeHtml(item.id) + '" data-key="openwhen_derek_' + escapeHtml(item.id) + '" placeholder="Write Frog\'s note..."></textarea></label>' +
+          '<div class="letter-content"><div class="letter-paper">' +
+            '<div class="letter-note"><label><span>From Frog</span><textarea id="derek-' + escapeHtml(item.id) + '" data-key="openwhen_derek_' + escapeHtml(item.id) + '" placeholder="Frog\'s note will be kept here."></textarea></label>' +
             '<button class="btn clear-note" type="button" data-target="derek-' + escapeHtml(item.id) + '">Clear note</button></div>' +
-            '<div><label>Princess\'s note 👑<textarea id="princess-' + escapeHtml(item.id) + '" data-key="openwhen_princess_' + escapeHtml(item.id) + '" placeholder="Write Princess\'s note..."></textarea></label>' +
+            '<div class="letter-note"><label><span>From Princess</span><textarea id="princess-' + escapeHtml(item.id) + '" data-key="openwhen_princess_' + escapeHtml(item.id) + '" placeholder="Princess\'s note will be kept here."></textarea></label>' +
             '<button class="btn clear-note" type="button" data-target="princess-' + escapeHtml(item.id) + '">Clear note</button></div>' +
-          '</div>' +
+          '</div></div>' +
         '</article>'
       ).join("");
 
       list.querySelectorAll(".letter-toggle").forEach((button) => {
-        button.addEventListener("click", () => button.closest(".letter-card").classList.toggle("open"));
+        button.addEventListener("click", () => {
+          const card = button.closest(".letter-card");
+          const open = !card.classList.contains("open");
+          card.classList.toggle("open", open);
+          button.setAttribute("aria-expanded", String(open));
+        });
       });
       list.querySelectorAll("textarea").forEach((textarea) => saveOnInput(textarea, textarea.dataset.key));
       list.querySelectorAll(".clear-note").forEach((button) => {
@@ -1722,6 +1953,7 @@
           toast("Letter deleted");
         });
       });
+      setEditing(editing);
     }
 
     addForm.addEventListener("submit", async (event) => {
@@ -1734,6 +1966,7 @@
       render();
       toast("Letter added 💌");
     });
+    editToggle?.addEventListener("click", () => setEditing(!editing));
 
     controllers.managedLetters = {
       refresh() {
@@ -1747,6 +1980,7 @@
   function initBadges() {
     const grid = document.getElementById("badgeGrid");
     const addForm = document.getElementById("badgeForm");
+    const editToggle = document.getElementById("badgeEditToggle");
     if (!grid || !addForm) return;
     if (controllers.managedBadges) {
       controllers.managedBadges.refresh();
@@ -1770,6 +2004,17 @@
     ];
     let items = getManagedItems(collectionKey, defaults);
     let unlocked = { ...shared.get("pf_badges", {}) };
+    let editing = false;
+
+    function setEditing(next) {
+      editing = next;
+      document.body.classList.toggle("is-editing-badges", editing);
+      addForm.hidden = !editing;
+      editToggle?.setAttribute("aria-pressed", String(editing));
+      if (editToggle) editToggle.innerHTML = editing
+        ? '<span aria-hidden="true">&times;</span> Finish editing'
+        : '<span aria-hidden="true">+</span> Edit badges';
+    }
 
     function renderProgress() {
       const count = items.filter((item) => unlocked[item.id]).length;
@@ -1848,6 +2093,7 @@
         });
       });
       renderProgress();
+      setEditing(editing);
     }
 
     addForm.addEventListener("submit", async (event) => {
@@ -1863,6 +2109,7 @@
       render();
       toast("Badge added 🏆");
     });
+    editToggle?.addEventListener("click", () => setEditing(!editing));
 
     controllers.managedBadges = {
       refresh() {
@@ -1877,6 +2124,7 @@
   function initGifts() {
     const grid = document.getElementById("giftGrid");
     const addForm = document.getElementById("giftForm");
+    const editToggle = document.getElementById("giftEditToggle");
     if (!grid || !addForm) return;
     if (controllers.managedGifts) {
       controllers.managedGifts.refresh();
@@ -1896,22 +2144,36 @@
       };
     });
     let items = getManagedItems(collectionKey, defaults);
+    let editing = false;
+
+    function setEditing(next) {
+      editing = next;
+      document.body.classList.toggle("is-editing-gifts", editing);
+      addForm.hidden = !editing;
+      editToggle?.setAttribute("aria-pressed", String(editing));
+      if (editToggle) editToggle.innerHTML = editing
+        ? '<span aria-hidden="true">&times;</span> Finish editing'
+        : '<span aria-hidden="true">+</span> Edit gifts';
+    }
 
     function render() {
       if (!items.length) {
         grid.innerHTML = '<div class="collection-empty"><span>🎁</span><h2>No gifts yet</h2><p>Add the first gift above.</p></div>';
         return;
       }
-      grid.innerHTML = items.map((item) => {
+      grid.innerHTML = items.map((item, index) => {
         const hasPhoto = Boolean(item.photo);
         return '<article class="gift-card managed-card" data-item-id="' + escapeHtml(item.id) + '">' +
+          '<span class="gift-number">' + String(index + 1).padStart(2, "0") + '</span>' +
           '<div class="managed-photo">' +
-            '<img src="' + (hasPhoto ? escapeHtml(item.photo) : "") + '" alt="' + escapeHtml(item.title) + '" ' + (hasPhoto ? "" : "hidden") + '>' +
+            '<img loading="lazy" decoding="async" src="' + (hasPhoto ? escapeHtml(item.photo) : "") + '" alt="' + escapeHtml(item.title) + '" ' + (hasPhoto ? "" : "hidden") + '>' +
             '<div class="gift-image" ' + (hasPhoto ? "hidden" : "") + '>Add a gift photo<br>' + escapeHtml(item.title) + '</div>' +
-            '<label class="photo-upload-btn" title="Upload a gift photo"><span>📷 ' + (hasPhoto ? "Replace photo" : "Add photo") + '</span>' +
+            '<label class="photo-upload-btn" title="Upload a gift photo"><span>' + (hasPhoto ? "Replace photo" : "Add photo") + '</span>' +
               '<input type="file" accept="image/jpeg,image/png,image/webp,image/gif">' +
             '</label>' +
           '</div>' +
+          '<div class="gift-copy"><p class="gift-date">' + escapeHtml(item.date || "Kept with us") + '</p><h2>' + escapeHtml(item.title) + '</h2>' +
+            (item.note ? '<p>' + escapeHtml(item.note) + '</p>' : '') + '</div>' +
           '<div class="managed-card-bar"><strong>Gift details</strong><div class="item-actions">' +
             '<button class="item-action delete-item" type="button" title="Delete gift" aria-label="Delete gift">×</button>' +
           '</div></div>' +
@@ -1943,6 +2205,18 @@
         img.addEventListener("error", () => {
           img.hidden = true;
           placeholder.hidden = false;
+        });
+        const card = img.closest(".gift-card");
+        const item = items.find((entry) => entry.id === card.dataset.itemId);
+        img.tabIndex = 0;
+        img.setAttribute("role", "button");
+        img.setAttribute("aria-label", `Open ${item.title} in photo viewer`);
+        img.addEventListener("click", () => openLightbox(img.currentSrc || img.src, item.title, img));
+        img.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openLightbox(img.currentSrc || img.src, item.title, img);
+          }
         });
       });
       grid.querySelectorAll("input[type='file']").forEach((input) => {
@@ -1982,6 +2256,7 @@
           toast("Gift deleted");
         });
       });
+      setEditing(editing);
     }
 
     addForm.addEventListener("submit", async (event) => {
@@ -2003,6 +2278,8 @@
       render();
       toast("Gift added 🎁");
     });
+    editToggle?.addEventListener("click", () => setEditing(!editing));
+    setupLightbox();
 
     controllers.managedGifts = {
       refresh() {
@@ -2016,6 +2293,7 @@
   function initMemories() {
     const grid = document.getElementById("memoryGrid");
     const addForm = document.getElementById("memoryForm");
+    const editToggle = document.getElementById("memoryEditToggle");
     if (!grid || !addForm) return;
     if (controllers.managedMemories) {
       controllers.managedMemories.refresh();
@@ -2045,26 +2323,53 @@
       photo: shared.get("pf_memory_" + id + "_photo", "")
     }));
     let items = getManagedItems(collectionKey, memoryDefaults);
+    let editing = false;
+
+    function setEditing(next) {
+      editing = next;
+      document.body.classList.toggle("is-editing-memories", editing);
+      addForm.hidden = !editing;
+      editToggle?.setAttribute("aria-pressed", String(editing));
+      if (editToggle) editToggle.innerHTML = editing
+        ? '<span aria-hidden="true">&times;</span> Finish editing'
+        : '<span aria-hidden="true">+</span> Edit memories';
+    }
+
+    function builtInSources(item) {
+      if (item.photo) return { src: item.photo, srcset: "" };
+      const source = item.id === "flowers" ? "flowers-for-my-princess" : (item.defaultSrc || "").split("/").pop()?.replace(/\.[^.]+$/, "");
+      if (!source) return { src: "", srcset: "" };
+      return {
+        src: `images/optimized/${source}-1200.webp`,
+        srcset: `images/optimized/${source}-640.webp 640w, images/optimized/${source}-1200.webp 1200w`
+      };
+    }
 
     function render() {
       if (!items.length) {
         grid.innerHTML = '<div class="collection-empty"><span>📸</span><h2>No memories yet</h2><p>Add your first memory above.</p></div>';
         return;
       }
-      grid.innerHTML = items.map((item) => {
-      const builtInSrc = item.id === "flowers"
-        ? "images/flowers-for-my-princess.png"
-        : item.defaultSrc;
-      const src = item.photo || builtInSrc || "";
-        return '<article class="memory-card managed-card ' + (item.featured ? "featured" : "") + '" data-item-id="' + escapeHtml(item.id) + '">' +
+      grid.innerHTML = items.map((item, index) => {
+        const sources = builtInSources(item);
+        const layout = item.featured ? "featured" : `memory-layout-${index % 4}`;
+        return '<article class="memory-card managed-card ' + layout + '" data-item-id="' + escapeHtml(item.id) + '">' +
+          '<span class="memory-sequence" aria-hidden="true">' + String(index + 1).padStart(2, "0") + '</span>' +
           '<div class="managed-photo memory-photo">' +
-            '<img src="' + escapeHtml(src) + '" alt="' + escapeHtml(item.title) + '" ' + (src ? "" : "hidden") + '>' +
-            '<div class="image-placeholder" ' + (src ? "hidden" : "") + '>Add a photo<br>' + escapeHtml(item.title) + '</div>' +
-            '<label class="photo-upload-btn" title="Upload a memory photo"><span>📷 ' + (src ? "Replace photo" : "Add photo") + '</span>' +
+            '<img loading="lazy" decoding="async" src="' + escapeHtml(sources.src) + '" ' + (sources.srcset ? 'srcset="' + escapeHtml(sources.srcset) + '" sizes="(max-width: 760px) 92vw, 54vw" ' : '') + 'alt="' + escapeHtml(item.title) + '" ' + (sources.src ? "" : "hidden") + '>' +
+            '<div class="image-placeholder" ' + (sources.src ? "hidden" : "") + '>Add a photo<br>' + escapeHtml(item.title) + '</div>' +
+            '<label class="photo-upload-btn" title="Upload a memory photo"><span>' + (sources.src ? "Replace photo" : "Add photo") + '</span>' +
               '<input type="file" accept="image/jpeg,image/png,image/webp,image/gif">' +
             '</label>' +
           '</div>' +
-          '<div class="managed-card-bar"><strong>Memory details</strong><div class="item-actions">' +
+          '<div class="memory-copy">' +
+            '<p class="memory-date">' + escapeHtml(item.date || "Kept with us") + '</p>' +
+            '<h2>' + escapeHtml(item.title) + '</h2>' +
+            (item.caption ? '<p class="memory-caption">' + escapeHtml(item.caption) + '</p>' : '') +
+          '</div>' +
+          '<div class="managed-card-bar"><strong>Edit memory</strong><div class="item-actions">' +
+            '<button class="item-action move-up" type="button" title="Move memory up" aria-label="Move memory up" ' + (index === 0 ? "disabled" : "") + '>&uarr;</button>' +
+            '<button class="item-action move-down" type="button" title="Move memory down" aria-label="Move memory down" ' + (index === items.length - 1 ? "disabled" : "") + '>&darr;</button>' +
             '<button class="item-action delete-item" type="button" title="Delete memory" aria-label="Delete memory">×</button>' +
           '</div></div>' +
           '<div class="memory-fields">' +
@@ -2075,6 +2380,9 @@
           '</div>' +
         '</article>';
       }).join("");
+
+      const count = document.querySelector(".archive-count");
+      if (count) count.textContent = String(items.length).padStart(2, "0");
 
       grid.querySelectorAll("[data-field]").forEach((field) => {
         const save = debounce(async () => {
@@ -2098,7 +2406,16 @@
           img.hidden = true;
           placeholder.hidden = false;
         });
-        img.addEventListener("click", () => openLightbox(img.src, item.title));
+        img.tabIndex = 0;
+        img.setAttribute("role", "button");
+        img.setAttribute("aria-label", `Open ${item.title} in photo viewer`);
+        img.addEventListener("click", () => openLightbox(img.currentSrc || img.src, item.title, img));
+        img.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openLightbox(img.currentSrc || img.src, item.title, img);
+          }
+        });
       });
       grid.querySelectorAll("input[type='file']").forEach((input) => {
         input.addEventListener("change", async () => {
@@ -2137,6 +2454,19 @@
           toast("Memory deleted");
         });
       });
+      grid.querySelectorAll(".move-up, .move-down").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const card = button.closest(".memory-card");
+          const index = items.findIndex((entry) => entry.id === card.dataset.itemId);
+          const nextIndex = button.classList.contains("move-up") ? index - 1 : index + 1;
+          if (nextIndex < 0 || nextIndex >= items.length) return;
+          [items[index], items[nextIndex]] = [items[nextIndex], items[index]];
+          await shared.set(collectionKey, items);
+          render();
+          toast("Memory order updated");
+        });
+      });
+      setEditing(editing);
     }
 
     addForm.addEventListener("submit", async (event) => {
@@ -2160,6 +2490,7 @@
       render();
       toast("Memory added 📸");
     });
+    editToggle?.addEventListener("click", () => setEditing(!editing));
 
     setupLightbox();
     controllers.managedMemories = {
@@ -2175,6 +2506,8 @@
     const list = document.getElementById("quoteList");
     const input = document.getElementById("quoteInput");
     const addButton = document.getElementById("addQuote");
+    const addPanel = document.getElementById("quoteAddPanel");
+    const editToggle = document.getElementById("quoteEditToggle");
     if (!list || !input || !addButton) return;
     if (controllers.managedQuotes) {
       controllers.managedQuotes.refresh();
@@ -2183,6 +2516,17 @@
 
     const defaults = ["You are so yum 🌝", "Princess and the Frog", "The frog knew he was lucky"];
     let quotes = shared.get("pf_quotes", defaults);
+    let editing = false;
+
+    function setEditing(next) {
+      editing = next;
+      document.body.classList.toggle("is-editing-quotes", editing);
+      if (addPanel) addPanel.hidden = !editing;
+      editToggle?.setAttribute("aria-pressed", String(editing));
+      if (editToggle) editToggle.innerHTML = editing
+        ? '<span aria-hidden="true">&times;</span> Finish editing'
+        : '<span aria-hidden="true">+</span> Edit quotes';
+    }
 
     function render() {
       quotes = Array.isArray(quotes) ? quotes : [];
@@ -2236,6 +2580,7 @@
           toast("Quote deleted");
         });
       });
+      setEditing(editing);
     }
 
     async function addQuote() {
@@ -2256,6 +2601,7 @@
         addQuote();
       }
     });
+    editToggle?.addEventListener("click", () => setEditing(!editing));
     controllers.managedQuotes = {
       refresh() {
         quotes = shared.get("pf_quotes", defaults);
@@ -2269,6 +2615,8 @@
     const list = document.getElementById("loveNoteList");
     const input = document.getElementById("loveInput");
     const addButton = document.getElementById("addLoveNote");
+    const addPanel = document.getElementById("loveAddPanel");
+    const editToggle = document.getElementById("loveEditToggle");
     if (!list || !input || !addButton) return;
     if (controllers.managedLoveNotes) {
       controllers.managedLoveNotes.refresh();
@@ -2276,6 +2624,17 @@
     }
 
     let notes = getLoveNotes();
+    let editing = false;
+
+    function setEditing(next) {
+      editing = next;
+      document.body.classList.toggle("is-editing-love", editing);
+      if (addPanel) addPanel.hidden = !editing;
+      editToggle?.setAttribute("aria-pressed", String(editing));
+      if (editToggle) editToggle.innerHTML = editing
+        ? '<span aria-hidden="true">&times;</span> Finish editing'
+        : '<span aria-hidden="true">+</span> Edit love notes';
+    }
 
     function render() {
       notes = Array.isArray(notes) ? notes : [];
@@ -2329,6 +2688,7 @@
           toast("Love note deleted");
         });
       });
+      setEditing(editing);
     }
 
     async function addNote() {
@@ -2349,6 +2709,7 @@
         addNote();
       }
     });
+    editToggle?.addEventListener("click", () => setEditing(!editing));
     controllers.managedLoveNotes = {
       refresh() {
         notes = getLoveNotes();
@@ -2363,7 +2724,16 @@
     const images = document.querySelectorAll(".june21-photo img");
     if (!images.length) return;
     images.forEach((img) => {
-      img.addEventListener("click", () => openLightbox(img.src, img.dataset.storyTitle || img.alt));
+      img.tabIndex = 0;
+      img.setAttribute("role", "button");
+      img.setAttribute("aria-label", `Open ${img.dataset.storyTitle || img.alt} in photo viewer`);
+      img.addEventListener("click", () => openLightbox(img.currentSrc || img.src, img.dataset.storyTitle || img.alt, img));
+      img.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openLightbox(img.currentSrc || img.src, img.dataset.storyTitle || img.alt, img);
+        }
+      });
     });
     setupLightbox();
     controllers.homeGallery = { refresh() {} };
@@ -2382,6 +2752,7 @@
       initGame();
       initWordGame();
       initSameGame();
+      window.CornerGames?.refresh?.();
     }
     if (page === "gifts") initGifts();
     if (page === "quotes") initQuotes();
@@ -2390,12 +2761,16 @@
   }
 
   async function start() {
+    setupSiteChrome();
     markActiveNav();
     addStatusPill();
-    await requirePasscode();
+    const identity = await window.CornerIdentity?.init?.();
+    if (!identity || identity.mode !== "account") await requirePasscode();
     await shared.init();
     setupRandomButtons();
     refreshCurrentPage();
+    window.CORNER_READY = { identity };
+    document.dispatchEvent(new CustomEvent("corner:ready", { detail: window.CORNER_READY }));
   }
 
   start();

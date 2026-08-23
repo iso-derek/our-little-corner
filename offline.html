@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f6f0e6">
+  <title>Offline | Princess + Frog</title>
+  <link rel="icon" href="images/favicon.svg" type="image/svg+xml">
+  <style>
+    :root { color-scheme: light; font-family: Georgia, serif; background: #f6f0e6; color: #241c1b; }
+    body { min-height: 100vh; margin: 0; display: grid; place-items: center; padding: 24px; }
+    main { width: min(560px, 100%); text-align: center; }
+    .mark { width: 64px; height: 64px; margin: 0 auto 28px; border: 1px solid #b48a3c; display: grid; place-items: center; color: #6f1f35; }
+    h1 { margin: 0 0 16px; font-size: clamp(42px, 10vw, 72px); font-weight: 500; line-height: .95; }
+    p { color: #6d6260; font: 16px/1.7 Arial, sans-serif; }
+    button { margin-top: 18px; padding: 13px 22px; border: 1px solid #6f1f35; color: #fff; background: #6f1f35; font: 700 14px Arial, sans-serif; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="mark" aria-hidden="true">PF</div>
+    <h1>Still yours,<br>just offline.</h1>
+    <p>The saved parts of your corner are still here. Shared updates, games, recordings, and new messages will reconnect when the internet returns.</p>
+    <button type="button" onclick="location.reload()">Try again</button>
+  </main>
+</body>
+</html>

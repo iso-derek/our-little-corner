@@ -4,8 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow, noarchive">
-  <title>Our Game Room</title>
-  <link rel="stylesheet" href="style.css?v=20260820-1">
+  <meta name="description" content="Three live two-player games for Princess and Frog.">
+  <meta name="theme-color" content="#f6f0e6">
+  <meta property="og:title" content="Our Game Room | Princess + Frog">
+  <meta property="og:image" content="https://iso-derek.github.io/our-little-corner/images/og-cover.jpg">
+  <title>Our Game Room | Princess + Frog</title>
+  <link rel="icon" href="images/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=20260823-4">
 </head>
 <body data-page="game">
   <header class="site-header">
@@ -27,11 +37,12 @@
     <section class="page-title game-room-title">
       <p class="eyebrow">Two players, one little corner</p>
       <h1>Our Game Room 🎮</h1>
-      <p>Pick who you are once, choose a game, and play together from separate devices.</p>
+      <p>Meet here from separate devices, invite each other in, and keep the score across every game.</p>
     </section>
 
     <section class="game-identity-bar" aria-label="Player and connection status">
-      <label>Playing as
+      <div class="account-player-label">Playing as <strong id="accountPlayerName">Your account</strong></div>
+      <label class="preview-player-select">Playing as
         <select id="gameIdentity">
           <option value="">Choose player</option>
           <option value="frog">Frog 🐸</option>
@@ -41,14 +52,56 @@
       <div class="presence-list" aria-live="polite">
         <span class="presence-pill" id="frogPresence"><i></i> Frog is away</span>
         <span class="presence-pill" id="princessPresence"><i></i> Princess is away</span>
-        <button class="icon-btn" id="syncGameState" type="button" title="Refresh shared game" aria-label="Refresh shared game">↻</button>
+        <button class="btn quiet-btn game-sync-button" id="syncGameState" type="button" title="Refresh every shared game"><span aria-hidden="true">↻</span> Refresh games</button>
       </div>
+    </section>
+
+    <section class="game-lobby" aria-labelledby="gameLobbyTitle">
+      <div class="game-lobby-heading">
+        <div><p class="eyebrow">Live together</p><h2 id="gameLobbyTitle">Game lobby</h2></div>
+        <div class="game-invite-controls">
+          <label class="sr-only" for="inviteGame">Game to invite</label>
+          <select id="inviteGame">
+            <option value="number">Guess Number</option>
+            <option value="word">Secret Word</option>
+            <option value="same">Same Page</option>
+            <option value="would">Would You Rather</option>
+            <option value="trivia">Couple Trivia</option>
+            <option value="truth">Truth or Dare</option>
+            <option value="memory">Memory Match</option>
+          </select>
+          <button class="btn primary" id="sendGameInvite" type="button">Invite to play</button>
+        </div>
+      </div>
+      <div class="game-invite-banner" id="gameInviteBanner" hidden aria-live="polite"></div>
+      <div class="lobby-strip">
+        <div class="lobby-score" aria-label="Overall game score">
+          <span>Frog <strong id="overallFrogScore">0</strong></span>
+          <span>Princess <strong id="overallPrincessScore">0</strong></span>
+          <span>Games <strong id="overallGameCount">0</strong></span>
+        </div>
+        <div class="game-reactions" aria-label="Send a reaction">
+          <button type="button" data-game-reaction="💕" aria-label="Send love reaction">💕</button>
+          <button type="button" data-game-reaction="😂" aria-label="Send laughing reaction">😂</button>
+          <button type="button" data-game-reaction="🔥" aria-label="Send fire reaction">🔥</button>
+          <button type="button" data-game-reaction="👏" aria-label="Send applause reaction">👏</button>
+        </div>
+      </div>
+      <div class="reaction-stage" id="reactionStage" aria-live="polite"></div>
+      <details class="match-history-panel">
+        <summary>Recent matches <span id="matchHistoryCount">0</span></summary>
+        <div class="match-history-list" id="matchHistoryList"></div>
+      </details>
     </section>
 
     <div class="game-tabs" role="tablist" aria-label="Choose a game">
       <button class="game-tab active" id="numberTab" type="button" role="tab" aria-selected="true" aria-controls="numberGamePanel" data-game-tab="number">🔢 Guess Number</button>
       <button class="game-tab" id="wordTab" type="button" role="tab" aria-selected="false" aria-controls="wordGamePanel" data-game-tab="word">🔤 Secret Word</button>
       <button class="game-tab" id="sameTab" type="button" role="tab" aria-selected="false" aria-controls="sameGamePanel" data-game-tab="same">💕 Same Page</button>
+      <button class="game-tab" id="wouldTab" type="button" role="tab" aria-selected="false" aria-controls="wouldGamePanel" data-game-tab="would">A/B Would You Rather</button>
+      <button class="game-tab" id="triviaTab" type="button" role="tab" aria-selected="false" aria-controls="triviaGamePanel" data-game-tab="trivia">? Couple Trivia</button>
+      <button class="game-tab" id="truthTab" type="button" role="tab" aria-selected="false" aria-controls="truthGamePanel" data-game-tab="truth">T/D Truth or Dare</button>
+      <button class="game-tab" id="memoryTab" type="button" role="tab" aria-selected="false" aria-controls="memoryGamePanel" data-game-tab="memory">Match Memory Match</button>
     </div>
 
     <section class="game-mode-panel" id="numberGamePanel" role="tabpanel" aria-labelledby="numberTab">
@@ -187,11 +240,97 @@
         </div>
       </div>
     </section>
+
+    <section class="game-mode-panel" id="wouldGamePanel" role="tabpanel" aria-labelledby="wouldTab" hidden>
+      <div class="game-panel-heading"><div><p class="eyebrow">Choose before the reveal</p><h2>Would You Rather</h2></div><p>Both answers stay hidden until you have chosen.</p></div>
+      <div class="game-status-grid same-status-grid">
+        <div class="game-status-card"><span>Round</span><strong id="wouldRoundStatus">Ready</strong></div>
+        <div class="game-status-card"><span>Frog</span><strong id="wouldFrogStatus">Waiting</strong></div>
+        <div class="game-status-card"><span>Princess</span><strong id="wouldPrincessStatus">Waiting</strong></div>
+        <div class="game-status-card"><span>Matches</span><strong id="wouldMatchScore">0 / 0</strong></div>
+      </div>
+      <div class="choice-game-stage">
+        <p class="eyebrow">Would you rather...</p>
+        <h3 id="wouldQuestion">Start a question when you are ready.</h3>
+        <div class="same-options">
+          <button class="same-option" id="wouldOptionA" type="button" disabled>Option A</button>
+          <button class="same-option" id="wouldOptionB" type="button" disabled>Option B</button>
+        </div>
+        <p class="game-result" id="wouldResult" aria-live="polite">Your choice stays private until both answers are locked.</p>
+      </div>
+      <div class="game-footer"><div></div><button class="btn primary" id="nextWouldQuestion" type="button">New question</button></div>
+    </section>
+
+    <section class="game-mode-panel" id="triviaGamePanel" role="tabpanel" aria-labelledby="triviaTab" hidden>
+      <div class="game-panel-heading"><div><p class="eyebrow">Ask what only you know</p><h2>Couple Trivia</h2></div><p>Take turns setting a private answer for the other person to guess.</p></div>
+      <div class="game-status-grid">
+        <div class="game-status-card"><span>Round</span><strong id="triviaRoundStatus">Ready</strong></div>
+        <div class="game-status-card"><span>Asking</span><strong id="triviaAskerStatus">Not chosen</strong></div>
+        <div class="game-status-card"><span>Guessing</span><strong id="triviaGuesserStatus">Waiting</strong></div>
+        <div class="game-status-card"><span>Score (F / P)</span><strong id="triviaScore">0 / 0</strong></div>
+      </div>
+      <div class="game-workspace trivia-workspace">
+        <form class="host-panel" id="triviaQuestionForm">
+          <h3>Ask your question</h3>
+          <label>Question<input id="triviaQuestionInput" type="text" maxlength="160" placeholder="What was our first...?"></label>
+          <label>Correct answer<input id="triviaAnswerInput" type="text" maxlength="80" autocomplete="off" placeholder="Keep this secret"></label>
+          <label>Optional hint<input id="triviaHintInput" type="text" maxlength="100" placeholder="A little clue"></label>
+          <button class="btn primary" type="submit">Lock question</button>
+        </form>
+        <form class="guess-panel" id="triviaGuessForm">
+          <p class="eyebrow">Question</p><h3 id="triviaQuestionText">Waiting for a question.</h3>
+          <p class="game-secret" id="triviaHintText"></p>
+          <label>Your answer<input id="triviaGuessInput" type="text" maxlength="80" placeholder="Take your best guess"></label>
+          <button class="btn primary" type="submit">Submit answer</button>
+        </form>
+      </div>
+      <p class="game-result" id="triviaResult" aria-live="polite">The asker changes after every round.</p>
+      <div class="game-footer"><div></div><button class="btn" id="nextTriviaRound" type="button">Next question</button></div>
+    </section>
+
+    <section class="game-mode-panel" id="truthGamePanel" role="tabpanel" aria-labelledby="truthTab" hidden>
+      <div class="game-panel-heading"><div><p class="eyebrow">Your turn, your choice</p><h2>Truth or Dare</h2></div><p>Draw a prompt, complete it together, then pass the turn.</p></div>
+      <div class="game-status-grid same-status-grid">
+        <div class="game-status-card"><span>Turn</span><strong id="truthTurnStatus">Frog</strong></div>
+        <div class="game-status-card"><span>Mode</span><strong id="truthModeStatus">Choose</strong></div>
+        <div class="game-status-card"><span>Round</span><strong id="truthRoundStatus">Ready</strong></div>
+        <div class="game-status-card"><span>Completed</span><strong id="truthCompletedCount">0</strong></div>
+      </div>
+      <div class="truth-stage">
+        <div class="segmented-control" aria-label="Truth or dare">
+          <button class="active" type="button" data-truth-type="truth">Truth</button>
+          <button type="button" data-truth-type="dare">Dare</button>
+        </div>
+        <p class="eyebrow" id="truthPromptLabel">Pick a side</p>
+        <h3 id="truthPrompt">Your prompt will appear here.</h3>
+        <p class="game-result" id="truthResult" aria-live="polite">Frog takes the first turn.</p>
+        <div class="button-row">
+          <button class="btn primary" id="drawTruthPrompt" type="button">Draw prompt</button>
+          <button class="btn" id="completeTruthPrompt" type="button" disabled>Complete and pass turn</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="game-mode-panel" id="memoryGamePanel" role="tabpanel" aria-labelledby="memoryTab" hidden>
+      <div class="game-panel-heading"><div><p class="eyebrow">Find the pairs</p><h2>Memory Match</h2></div><p>Take turns revealing two cards. A match earns the pair and another turn.</p></div>
+      <div class="game-status-grid">
+        <div class="game-status-card"><span>Turn</span><strong id="memoryTurnStatus">Start a game</strong></div>
+        <div class="game-status-card"><span>Frog</span><strong id="memoryFrogScore">0 pairs</strong></div>
+        <div class="game-status-card"><span>Princess</span><strong id="memoryPrincessScore">0 pairs</strong></div>
+        <div class="game-status-card"><span>Found</span><strong id="memoryPairsStatus">0 / 8</strong></div>
+      </div>
+      <div class="memory-match-board" id="memoryMatchBoard" aria-label="Memory match board"></div>
+      <p class="game-result" id="memoryMatchResult" aria-live="polite">Start a new board when you are both ready.</p>
+      <div class="game-footer"><div></div><button class="btn primary" id="newMemoryMatch" type="button">New board</button></div>
+    </section>
   </main>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
-  <script src="script.js?v=20260820-5"></script>
+  <script src="auth.js?v=20260823-4"></script>
+  <script src="script.js?v=20260823-5"></script>
+  <script src="app-enhancements.js?v=20260823-4"></script>
+  <script src="games-plus.js?v=20260823-4"></script>
 </body>
 </html>
