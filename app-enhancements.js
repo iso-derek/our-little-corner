@@ -6,6 +6,8 @@
   let notificationChannel = null;
   let mediaObserver = null;
   let activeRecorder = null;
+  let welcomeExperience = null;
+  let presenceTimer = null;
   const signedMediaCache = new Map();
   const notificationCooldowns = new Map();
 
@@ -29,6 +31,172 @@
 
   function roleName(role) {
     return role === "frog" ? "Frog" : role === "princess" ? "Princess" : "Our Corner";
+  }
+
+  const welcomeCopy = {
+    princess: {
+      eyebrow: "A private entrance for Her Royal Highness",
+      titleLead: "Welcome home,",
+      titleName: "Princess.",
+      message: "My favourite girl has entered the story. This little corner is yours: every letter, memory, game, and small surprise was made to remind you that you are loved, chosen, and always on my mind.",
+      signoff: "With love, your Frog.",
+      image: "images/optimized/june21-flowers-1200.webp",
+      imageSmall: "images/optimized/june21-flowers-640.webp",
+      position: "center 38%"
+    },
+    frog: {
+      eyebrow: "The keeper of our little corner returns",
+      titleLead: "Welcome back,",
+      titleName: "Frog.",
+      message: "The lights are on, the memories are safe, and your Princess is only one message away. Come in, add something beautiful, and keep making this story worth returning to.",
+      signoff: "Our favourite chapter is waiting.",
+      image: "images/optimized/june21-question-1200.webp",
+      imageSmall: "images/optimized/june21-question-640.webp",
+      position: "center 45%"
+    }
+  };
+
+  function chapterDay() {
+    const beginning = new Date("2026-06-21T00:00:00");
+    const now = new Date();
+    const localBeginning = new Date(beginning.getFullYear(), beginning.getMonth(), beginning.getDate());
+    const localToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return Math.max(1, Math.floor((localToday - localBeginning) / 86400000) + 1);
+  }
+
+  function welcomeSessionKey() {
+    return `pf_welcome_seen_${identity().user?.id || identity().role || "preview"}`;
+  }
+
+  function partnerPresence() {
+    const partner = otherRole(identity().role);
+    const seenAt = Date.parse(runtime()?.shared?.get(`pf_presence_${partner}`, "") || "");
+    return {
+      partner,
+      online: Number.isFinite(seenAt) && Date.now() - seenAt < 70000
+    };
+  }
+
+  function updateWelcomePresence(root = welcomeExperience) {
+    const status = root?.querySelector("[data-welcome-presence]");
+    if (!status) return;
+    const partner = partnerPresence();
+    status.classList.toggle("online", partner.online);
+    status.querySelector("strong").textContent = partner.online
+      ? `${roleName(partner.partner)} is here too`
+      : `${roleName(partner.partner)} has a place here`;
+    status.querySelector("small").textContent = partner.online
+      ? "You are in your corner together, right now."
+      : "They will see what you leave for them.";
+  }
+
+  async function heartbeatPresence() {
+    if (!window.CornerIdentity?.isAccount() || !runtime()?.shared) return;
+    await runtime().shared.set(`pf_presence_${identity().role}`, new Date().toISOString());
+    updateWelcomePresence();
+  }
+
+  function initializePresence() {
+    if (!window.CornerIdentity?.isAccount() || presenceTimer) return;
+    heartbeatPresence();
+    presenceTimer = window.setInterval(heartbeatPresence, 25000);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) heartbeatPresence();
+    });
+  }
+
+  function greetingForNow() {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
+  }
+
+  function closeWelcome({ destination = "" } = {}) {
+    if (!welcomeExperience) return;
+    const root = welcomeExperience;
+    sessionStorage.setItem(welcomeSessionKey(), "yes");
+    root.classList.add("is-leaving");
+    document.body.classList.remove("welcome-open");
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.setTimeout(() => {
+      root.remove();
+      if (welcomeExperience === root) welcomeExperience = null;
+      if (destination) location.href = destination;
+    }, reducedMotion ? 20 : 720);
+  }
+
+  function showWelcomeExperience({ force = false } = {}) {
+    const me = identity();
+    if (me.mode !== "account" || !["frog", "princess"].includes(me.role)) return null;
+    if (!force && sessionStorage.getItem(welcomeSessionKey()) === "yes") return null;
+    welcomeExperience?.remove();
+
+    const copy = welcomeCopy[me.role];
+    const partner = otherRole(me.role);
+    const root = document.createElement("section");
+    root.className = "welcome-experience";
+    root.dataset.role = me.role;
+    root.setAttribute("role", "dialog");
+    root.setAttribute("aria-modal", "true");
+    root.setAttribute("aria-labelledby", "welcomeExperienceTitle");
+    root.innerHTML = `
+      <div class="welcome-portrait" aria-hidden="true">
+        <picture>
+          <source media="(max-width: 760px)" srcset="${copy.imageSmall}">
+          <img src="${copy.image}" alt="" style="object-position:${copy.position}">
+        </picture>
+        <div class="welcome-portrait-shade"></div>
+        <span class="welcome-portrait-caption">21 / 06 &nbsp; Our favourite chapter</span>
+      </div>
+      <div class="welcome-stage">
+        <button class="welcome-skip" type="button" aria-label="Skip welcome and enter the site">Skip</button>
+        <div class="welcome-monogram" aria-hidden="true"><span>P</span><i></i><span>F</span></div>
+        <div class="welcome-copy">
+          <p class="welcome-time">${greetingForNow()}, ${roleName(me.role)}</p>
+          <p class="eyebrow">${copy.eyebrow}</p>
+          <h1 id="welcomeExperienceTitle"><span>${copy.titleLead}</span><strong>${copy.titleName}</strong></h1>
+          <p class="welcome-message">${copy.message}</p>
+          <p class="welcome-signoff">${copy.signoff}</p>
+        </div>
+        <div class="welcome-details" aria-label="Your corner today">
+          <div class="welcome-detail">
+            <span>Our chapter</span>
+            <strong>Day ${chapterDay()}</strong>
+            <small>Since the best yes I have heard.</small>
+          </div>
+          <div class="welcome-detail welcome-presence" data-welcome-presence>
+            <span><i aria-hidden="true"></i> Live corner</span>
+            <strong>${roleName(partner)} has a place here</strong>
+            <small>They will see what you leave for them.</small>
+          </div>
+        </div>
+        <div class="welcome-actions">
+          <button class="welcome-enter" type="button" data-welcome-enter>Enter our little corner <span aria-hidden="true">&rarr;</span></button>
+          <button class="welcome-surprise" type="button" data-welcome-surprise>Take me somewhere sweet</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(root);
+    document.body.classList.add("welcome-open");
+    welcomeExperience = root;
+    updateWelcomePresence(root);
+
+    const sweetPlaces = ["love.html", "letters.html", "memories.html", "messages.html"];
+    root.querySelector("[data-welcome-enter]").addEventListener("click", () => closeWelcome());
+    root.querySelector(".welcome-skip").addEventListener("click", () => closeWelcome());
+    root.querySelector("[data-welcome-surprise]").addEventListener("click", () => {
+      const index = Math.floor(Math.random() * sweetPlaces.length);
+      closeWelcome({ destination: sweetPlaces[index] });
+    });
+    root.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeWelcome();
+    });
+    requestAnimationFrame(() => {
+      root.classList.add("is-visible");
+      root.querySelector("[data-welcome-enter]").focus({ preventScroll: true });
+    });
+    return root;
   }
 
   function escapeHtml(value) {
@@ -95,6 +263,7 @@
       <div class="account-commands">
         <button class="btn" type="button" data-enable-notifications>Enable notifications</button>
         <button class="btn" type="button" data-install-app>Install on this device</button>
+        ${me.mode === "account" ? '<button class="btn account-command-wide" type="button" data-replay-welcome>Replay welcome</button>' : ''}
       </div>
       <section class="notification-center" aria-labelledby="notificationTitle">
         <div class="notification-heading"><h3 id="notificationTitle">Notifications</h3><button class="text-action" type="button" data-read-all>Mark all read</button></div>
@@ -124,6 +293,10 @@
     drawer.querySelector("[data-install-app]").addEventListener("click", installApp);
     drawer.querySelector("[data-enable-notifications]").addEventListener("click", enablePushNotifications);
     drawer.querySelector("[data-read-all]").addEventListener("click", markAllNotificationsRead);
+    drawer.querySelector("[data-replay-welcome]")?.addEventListener("click", () => {
+      closeDrawer();
+      showWelcomeExperience({ force: true });
+    });
     drawer.querySelector(".sign-out-button")?.addEventListener("click", () => window.CornerIdentity.signOut());
 
     accountCenter = { actions, drawer, backdrop, open: openDrawer, close: closeDrawer };
@@ -542,6 +715,8 @@
 
   async function initialize() {
     ensureAccountCenter();
+    initializePresence();
+    showWelcomeExperience();
     await initializeNotifications();
     initializeMedia();
     if (window.CornerIdentity?.isAccount()) {
@@ -554,6 +729,7 @@
   }
 
   window.CornerNotifications = { fromSharedChange, create: createNotification, refresh: loadNotifications };
+  window.CornerWelcome = { show: showWelcomeExperience, close: closeWelcome };
   registerPWA();
   if (window.CORNER_READY) initialize();
   else document.addEventListener("corner:ready", initialize, { once: true });

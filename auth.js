@@ -165,9 +165,11 @@
   }
 
   async function signOut() {
+    const userId = current.user?.id;
     if (client) await client.auth.signOut();
     sessionStorage.removeItem("pf_game_player");
     sessionStorage.removeItem("pf_message_sender");
+    if (userId) sessionStorage.removeItem(`pf_welcome_seen_${userId}`);
     location.reload();
   }
 
