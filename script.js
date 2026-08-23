@@ -2307,22 +2307,39 @@
       ["train", "Train ride 🚆", "images/memory11.jpeg"],
       ["chill", "Chill day 🍦", "images/memory3.jpeg"],
       ["f1", "F1 🏎️", "images/memory4.jpeg"],
-      ["flowers", "Flowers for my princess 🌷", "images/memory5.jpeg", true],
+      ["flower-days", "Flowers, again and again 🌷", "images/memory5.jpeg", false, "memory5"],
+      ["flowers", "Flowers for my princess 🌷", "images/flowers-for-my-princess.png", true, "flowers-for-my-princess"],
+      ["june21-flowers", "Flowers and the best yes 💐", "images/june21-flowers.png", false, "june21-flowers"],
       ["hike", "The Hike 🏞️🥾", "images/memory6.jpeg"],
       ["date-night", "Date night ❤️", "images/memory7.jpeg"],
       ["birthday", "Her birthday 🎂", "images/memory8.jpeg"],
       ["go-ape", "Vals / GO APE 🌲", "images/memory9.jpeg"],
       ["first-date", "Our first date 💕", "images/memory10.jpeg"]
-    ].map(([id, title, defaultSrc, featured]) => ({
+    ].map(([id, title, defaultSrc, featured, assetKey]) => ({
       id,
       title,
       defaultSrc,
+      assetKey: assetKey || defaultSrc.split("/").pop()?.replace(/\.[^.]+$/, ""),
       featured: Boolean(featured),
       date: shared.get("pf_memory_" + id + "_date", ""),
       caption: shared.get("pf_memory_" + id + "_caption", ""),
       photo: shared.get("pf_memory_" + id + "_photo", "")
     }));
     let items = getManagedItems(collectionKey, memoryDefaults);
+    const flowerIds = ["flower-days", "flowers", "june21-flowers"];
+    const missingFlowers = flowerIds.some((id) => !items.some((item) => item.id === id));
+    if (missingFlowers) {
+      const currentFlowers = new Map(items.filter((item) => flowerIds.includes(item.id)).map((item) => [item.id, item]));
+      const firstFlowerIndex = items.findIndex((item) => flowerIds.includes(item.id));
+      const insertAt = firstFlowerIndex >= 0 ? firstFlowerIndex : Math.min(5, items.length);
+      const flowerGroup = flowerIds.map((id) => {
+        const fallback = memoryDefaults.find((item) => item.id === id);
+        return { ...fallback, ...(currentFlowers.get(id) || {}) };
+      });
+      items = items.filter((item) => !flowerIds.includes(item.id));
+      items.splice(insertAt, 0, ...flowerGroup);
+      shared.set(collectionKey, items);
+    }
     let editing = false;
 
     function setEditing(next) {
@@ -2337,7 +2354,7 @@
 
     function builtInSources(item) {
       if (item.photo) return { src: item.photo, srcset: "" };
-      const source = item.id === "flowers" ? "flowers-for-my-princess" : (item.defaultSrc || "").split("/").pop()?.replace(/\.[^.]+$/, "");
+      const source = item.assetKey || (item.defaultSrc || "").split("/").pop()?.replace(/\.[^.]+$/, "");
       if (!source) return { src: "", srcset: "" };
       return {
         src: `images/optimized/${source}-1200.webp`,

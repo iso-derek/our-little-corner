@@ -68,6 +68,23 @@
     return `pf_welcome_seen_${identity().user?.id || identity().role || "preview"}`;
   }
 
+  function welcomeMessageKey(role) {
+    return `pf_welcome_message_${role}`;
+  }
+
+  function welcomeMessageFor(role) {
+    const saved = runtime()?.shared?.get(welcomeMessageKey(role), null);
+    if (typeof saved === "string") {
+      const text = saved.trim();
+      return text ? { text, from: otherRole(role), updatedAt: "" } : null;
+    }
+    if (!saved || typeof saved !== "object" || typeof saved.text !== "string") return null;
+    const text = saved.text.trim();
+    if (!text) return null;
+    const from = ["frog", "princess"].includes(saved.from) ? saved.from : otherRole(role);
+    return { text, from, updatedAt: saved.updatedAt || "" };
+  }
+
   function partnerPresence() {
     const partner = otherRole(identity().role);
     const seenAt = Date.parse(runtime()?.shared?.get(`pf_presence_${partner}`, "") || "");
@@ -134,9 +151,15 @@
 
     const copy = welcomeCopy[me.role];
     const partner = otherRole(me.role);
+    const waitingNote = welcomeMessageFor(me.role);
+    const welcomeMessage = waitingNote?.text || copy.message;
+    const welcomeSignoff = waitingNote
+      ? `Left for you by your ${roleName(waitingNote.from)}.`
+      : copy.signoff;
     const root = document.createElement("section");
     root.className = "welcome-experience";
     root.dataset.role = me.role;
+    root.dataset.note = waitingNote ? "partner" : "default";
     root.setAttribute("role", "dialog");
     root.setAttribute("aria-modal", "true");
     root.setAttribute("aria-labelledby", "welcomeExperienceTitle");
@@ -156,8 +179,9 @@
           <p class="welcome-time">${greetingForNow()}, ${roleName(me.role)}</p>
           <p class="eyebrow">${copy.eyebrow}</p>
           <h1 id="welcomeExperienceTitle"><span>${copy.titleLead}</span><strong>${copy.titleName}</strong></h1>
-          <p class="welcome-message">${copy.message}</p>
-          <p class="welcome-signoff">${copy.signoff}</p>
+          ${waitingNote ? `<p class="welcome-note-label">A note waiting from ${roleName(waitingNote.from)}</p>` : ""}
+          <p class="welcome-message">${escapeHtml(welcomeMessage)}</p>
+          <p class="welcome-signoff">${escapeHtml(welcomeSignoff)}</p>
         </div>
         <div class="welcome-details" aria-label="Your corner today">
           <div class="welcome-detail">
@@ -226,11 +250,61 @@
     runtime()?.toast("Use Add to Home Screen from your browser menu");
   }
 
+  function initializeWelcomeNoteStudio(drawer) {
+    const studio = drawer.querySelector("[data-welcome-note-studio]");
+    if (!studio) return;
+    const recipient = otherRole(identity().role);
+    const textarea = studio.querySelector("[data-welcome-note-input]");
+    const count = studio.querySelector("[data-welcome-note-count]");
+    const status = studio.querySelector("[data-welcome-note-status]");
+    const saved = welcomeMessageFor(recipient);
+
+    textarea.value = saved?.text || "";
+    const updateCount = () => {
+      count.textContent = `${textarea.value.length} / ${textarea.maxLength}`;
+    };
+    const setStatus = (message, state = "") => {
+      status.textContent = message;
+      status.dataset.state = state;
+    };
+    updateCount();
+    textarea.addEventListener("input", () => {
+      updateCount();
+      setStatus("Your changes are waiting to be saved.");
+    });
+    studio.querySelector("[data-save-welcome-note]").addEventListener("click", async () => {
+      const text = textarea.value.trim();
+      if (!text) {
+        textarea.focus();
+        setStatus(`Write something for ${roleName(recipient)} first.`, "error");
+        return;
+      }
+      setStatus("Saving their next entrance...");
+      await runtime()?.shared?.set(welcomeMessageKey(recipient), {
+        text,
+        from: identity().role,
+        updatedAt: new Date().toISOString()
+      });
+      textarea.value = text;
+      updateCount();
+      setStatus(`${roleName(recipient)} will see this at their next sign-in.`, "saved");
+      runtime()?.toast(`Welcome saved for ${roleName(recipient)}`);
+    });
+    studio.querySelector("[data-clear-welcome-note]").addEventListener("click", async () => {
+      textarea.value = "";
+      updateCount();
+      setStatus("Clearing the saved entrance...");
+      await runtime()?.shared?.set(welcomeMessageKey(recipient), null);
+      setStatus(`${roleName(recipient)} will see the original welcome next time.`, "saved");
+    });
+  }
+
   function ensureAccountCenter() {
     if (accountCenter) return accountCenter;
     const header = document.querySelector(".site-header");
     if (!header) return null;
     const me = identity();
+    const partner = otherRole(me.role);
     const actions = document.createElement("div");
     actions.className = "header-account-actions";
     actions.innerHTML = `
@@ -265,6 +339,23 @@
         <button class="btn" type="button" data-install-app>Install on this device</button>
         ${me.mode === "account" ? '<button class="btn account-command-wide" type="button" data-replay-welcome>Replay welcome</button>' : ''}
       </div>
+      ${me.mode === "account" ? `
+        <section class="welcome-note-studio" data-welcome-note-studio aria-labelledby="welcomeNoteTitle">
+          <p class="eyebrow">Next entrance</p>
+          <h3 id="welcomeNoteTitle">Welcome ${roleName(partner)}</h3>
+          <p>Leave a private message for the next time ${roleName(partner)} opens your corner.</p>
+          <label for="partnerWelcomeNote">Your message for ${roleName(partner)}</label>
+          <textarea id="partnerWelcomeNote" data-welcome-note-input maxlength="260" rows="5" placeholder="Write the words you want waiting for them..."></textarea>
+          <div class="welcome-note-meta">
+            <small data-welcome-note-count>0 / 260</small>
+            <span data-welcome-note-status aria-live="polite">Only ${roleName(partner)} sees this on their welcome screen.</span>
+          </div>
+          <div class="welcome-note-actions">
+            <button class="text-action" type="button" data-clear-welcome-note>Use original</button>
+            <button class="btn primary" type="button" data-save-welcome-note>Save for ${roleName(partner)}</button>
+          </div>
+        </section>
+      ` : ""}
       <section class="notification-center" aria-labelledby="notificationTitle">
         <div class="notification-heading"><h3 id="notificationTitle">Notifications</h3><button class="text-action" type="button" data-read-all>Mark all read</button></div>
         <div class="notification-list"><p class="notification-empty">Nothing new yet.</p></div>
@@ -298,6 +389,7 @@
       showWelcomeExperience({ force: true });
     });
     drawer.querySelector(".sign-out-button")?.addEventListener("click", () => window.CornerIdentity.signOut());
+    initializeWelcomeNoteStudio(drawer);
 
     accountCenter = { actions, drawer, backdrop, open: openDrawer, close: closeDrawer };
     return accountCenter;
