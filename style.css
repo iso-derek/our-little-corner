@@ -610,6 +610,55 @@ body[data-identity="frog"] .personal-dashboard {
   color: var(--muted);
 }
 
+.date-page .date-planner {
+  width: 100%;
+  margin: 48px 0 0;
+  padding-bottom: 0;
+  border-top: 0;
+}
+
+.date-intro-copy {
+  display: grid;
+  gap: 24px;
+  align-content: end;
+  padding-bottom: 10px;
+}
+
+.date-intro-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1.7;
+}
+
+.date-intro-copy .text-action {
+  width: fit-content;
+  color: var(--burgundy);
+}
+
+.date-page .planner-heading {
+  padding-top: 28px;
+}
+
+.date-page .date-idea-form .composer-title {
+  margin: 0 0 10px;
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+@media (max-width: 700px) {
+  .date-page .date-planner {
+    width: 100%;
+    margin-top: 24px;
+  }
+
+  .date-intro-copy {
+    padding-bottom: 0;
+  }
+}
+
 .date-idea-actions .is-voted {
   color: var(--burgundy);
   font-weight: 800;

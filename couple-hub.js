@@ -62,6 +62,12 @@
       steps: ["Add films individually or work through the starter collections.", "Tick Watched after movie night, then rate it from your own account.", "Compare Frog and Princess scores or use Pick tonight's movie when neither of you wants to choose."],
       shared: "Both personal ratings stay visible, and every tick, ranking, and note syncs instantly."
     },
+    dates: {
+      title: "Date Planner",
+      summary: "A shared shortlist for ideas, availability, votes, and the plan you choose together.",
+      steps: ["Share your next free time so both schedules appear together.", "Add a date idea with its budget, location, and any little details.", "Vote on favourites, choose a plan, then mark it complete after your date."],
+      shared: "Ideas, votes, availability, and the chosen date update for both accounts."
+    },
     messages: {
       title: "Our Chat",
       summary: "A calm private message space that belongs to this corner.",
@@ -697,7 +703,7 @@
     const selected = shared().get("pf_date_selected", null);
     const chosen = Array.isArray(ideas) && selected ? ideas.find((item) => item.id === selected.id) : null;
     document.getElementById("dashboardDate").textContent = chosen?.title || "Not chosen";
-    document.getElementById("dashboardDateDetail").textContent = chosen?.when ? formatDate(chosen.when, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : chosen?.location || "Build your shortlist below";
+    document.getElementById("dashboardDateDetail").textContent = chosen?.when ? formatDate(chosen.when, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : chosen?.location || "Open the Date Planner";
 
     const client = window.CornerIdentity?.client;
     if (!client || !window.CornerIdentity?.isAccount()) return;
@@ -978,6 +984,7 @@
       document.dispatchEvent(new CustomEvent("corner:home-refresh"));
       renderDashboard();
     }
+    if (page === "dates" && key.startsWith("pf_date_")) document.dispatchEvent(new CustomEvent("corner:date-refresh"));
     if (page === "movies" && key === "pf_movie_items") document.dispatchEvent(new CustomEvent("corner:movie-refresh"));
     if (page === "game" && ["pf_game_timer", "pf_game_history"].includes(key)) renderGameNightConsole();
   }

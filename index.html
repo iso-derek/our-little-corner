@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&amp;display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260824-7">
+  <link rel="stylesheet" href="style.css?v=20260824-8">
 </head>
 <body data-page="home">
   <header class="site-header">
@@ -72,7 +72,7 @@
         </article>
         <article><span class="dashboard-label">Unread</span><strong id="dashboardUnread">0</strong><small>private updates</small></article>
         <article><span class="dashboard-label">Daily ritual</span><strong id="dashboardRitual">Not started</strong><small id="dashboardRitualDetail">Answer today&rsquo;s question</small></article>
-        <article><span class="dashboard-label">Next date</span><strong id="dashboardDate">Not chosen</strong><small id="dashboardDateDetail">Build your shortlist below</small></article>
+        <article><span class="dashboard-label">Next date</span><strong id="dashboardDate">Not chosen</strong><small id="dashboardDateDetail">Plan it in the Date Planner</small></article>
       </div>
       <div class="dashboard-activity">
         <div><p class="eyebrow">Latest activity</p><h3>What changed in our corner</h3></div>
@@ -99,6 +99,7 @@
           <a href="memories.html"><strong>Memory Wall</strong><span>Keep photos, dates, and captions together. Enter edit mode only when you want to add or change something.</span></a>
           <a href="game.html"><strong>Game Room</strong><span>Invite each other, choose a game, follow the live turn status, and use rematch when a round ends.</span></a>
           <a href="movies.html"><strong>Movie Shelf</strong><span>Build watchlists, tick films off, rate them, rank collections, or let the picker choose tonight&rsquo;s film.</span></a>
+          <a href="dates.html"><strong>Date Planner</strong><span>Share availability, collect ideas, vote together, and choose the plan you both want next.</span></a>
           <a href="messages.html"><strong>Our Chat</strong><span>Leave a message that stays in your private corner and reaches your partner on their device.</span></a>
           <a href="badges.html"><strong>Badges</strong><span>Turn date ideas and milestones into little trophies. Unlock them after you complete them together.</span></a>
           <a href="gifts.html"><strong>Gifts</strong><span>Keep gift ideas, photos, dates, and the story behind each surprise.</span></a>
@@ -136,33 +137,6 @@
           <p class="form-status" id="ritualFormStatus" aria-live="polite"></p>
         </form>
         <div class="ritual-reveal" id="ritualReveal" aria-live="polite"></div>
-      </div>
-    </section>
-
-    <section class="date-planner" id="datePlanner" aria-labelledby="datePlannerTitle">
-      <div class="planner-heading">
-        <div><p class="eyebrow">Plan something lovely</p><h2 id="datePlannerTitle">Date Planner</h2></div>
-        <button class="btn primary" id="chooseDateIdea" type="button">Choose tonight&rsquo;s date</button>
-      </div>
-      <div class="selected-date" id="selectedDateIdea" aria-live="polite"><span>No date chosen yet</span><strong>Vote on ideas or let the picker surprise you.</strong></div>
-      <div class="availability-strip">
-        <label>Your next free time<input id="dateAvailability" type="datetime-local"></label>
-        <button class="btn" id="saveAvailability" type="button">Save my availability</button>
-        <div id="availabilitySummary">Waiting for both schedules.</div>
-      </div>
-      <div class="planner-layout">
-        <form class="date-idea-form" id="dateIdeaForm">
-          <h3>Add a date idea</h3>
-          <label>Idea<input id="dateIdeaTitle" type="text" maxlength="100" placeholder="Paint together, late-night dessert..." required></label>
-          <div class="form-row">
-            <label>When<input id="dateIdeaWhen" type="datetime-local"></label>
-            <label>Budget<select id="dateIdeaBudget"><option value="Free">Free</option><option value="Low">Low</option><option value="Medium" selected>Medium</option><option value="Treat">A proper treat</option></select></label>
-          </div>
-          <label>Location<input id="dateIdeaLocation" type="text" maxlength="100" placeholder="Home, London, somewhere new..."></label>
-          <label>Little details<textarea id="dateIdeaNotes" maxlength="300" rows="3" placeholder="What would make this date special?"></textarea></label>
-          <button class="btn primary" type="submit">Add to our shortlist</button>
-        </form>
-        <div class="date-idea-list" id="dateIdeaList"></div>
       </div>
     </section>
 
@@ -242,11 +216,12 @@
         <a class="feature-card feature-main" href="letters.html"><span class="feature-number">02</span><strong>Open When Letters</strong><small>Two notes for every mood.</small><span class="feature-arrow" aria-hidden="true">&nearr;</span></a>
         <a class="feature-card" href="game.html"><span class="feature-number">03</span><strong>Our Game Room</strong><small>Invites, live rounds, rematches, and scores.</small><span class="feature-arrow" aria-hidden="true">&nearr;</span></a>
         <a class="feature-card" href="movies.html"><span class="feature-number">04</span><strong>Movie Shelf</strong><small>Watchlists, ratings, rankings, and movie-night picks.</small><span class="feature-arrow" aria-hidden="true">&nearr;</span></a>
-        <a class="feature-card" href="messages.html"><span class="feature-number">05</span><strong>Our Chat</strong><small>Leave a note for later.</small><span class="feature-arrow" aria-hidden="true">&nearr;</span></a>
-        <a class="feature-card" href="badges.html"><span class="feature-number">06</span><strong>Achievement Badges</strong><small>Date ideas become little trophies.</small><span class="feature-arrow" aria-hidden="true">&nearr;</span></a>
-        <a class="feature-card" href="gifts.html"><span class="feature-number">07</span><strong>Gifts Corner</strong><small>Surprises for my princess.</small><span class="feature-arrow" aria-hidden="true">&nearr;</span></a>
-        <a class="feature-card" href="quotes.html"><span class="feature-number">08</span><strong>Things We Said</strong><small>Lines worth remembering.</small><span class="feature-arrow" aria-hidden="true">&nearr;</span></a>
-        <a class="feature-card" href="love.html"><span class="feature-number">09</span><strong>Love Notes</strong><small>Sweet things on demand.</small><span class="feature-arrow" aria-hidden="true">&nearr;</span></a>
+        <a class="feature-card" href="dates.html"><span class="feature-number">05</span><strong>Date Planner</strong><small>Ideas, votes, availability, and your next plan.</small><span class="feature-arrow" aria-hidden="true">&nearr;</span></a>
+        <a class="feature-card" href="messages.html"><span class="feature-number">06</span><strong>Our Chat</strong><small>Leave a note for later.</small><span class="feature-arrow" aria-hidden="true">&nearr;</span></a>
+        <a class="feature-card" href="badges.html"><span class="feature-number">07</span><strong>Achievement Badges</strong><small>Date ideas become little trophies.</small><span class="feature-arrow" aria-hidden="true">&nearr;</span></a>
+        <a class="feature-card" href="gifts.html"><span class="feature-number">08</span><strong>Gifts Corner</strong><small>Surprises for my princess.</small><span class="feature-arrow" aria-hidden="true">&nearr;</span></a>
+        <a class="feature-card" href="quotes.html"><span class="feature-number">09</span><strong>Things We Said</strong><small>Lines worth remembering.</small><span class="feature-arrow" aria-hidden="true">&nearr;</span></a>
+        <a class="feature-card" href="love.html"><span class="feature-number">10</span><strong>Love Notes</strong><small>Sweet things on demand.</small><span class="feature-arrow" aria-hidden="true">&nearr;</span></a>
       </div>
     </section>
   </main>
@@ -261,9 +236,9 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=20260824-1"></script>
   <script src="auth.js?v=20260824-2"></script>
-  <script src="script.js?v=20260824-7"></script>
-  <script src="app-enhancements.js?v=20260824-4"></script>
+  <script src="script.js?v=20260824-8"></script>
+  <script src="app-enhancements.js?v=20260824-5"></script>
   <script src="games-plus.js?v=20260824-4"></script>
-  <script src="couple-hub.js?v=20260824-4"></script>
+  <script src="couple-hub.js?v=20260824-5"></script>
 </body>
 </html>

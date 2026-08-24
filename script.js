@@ -295,6 +295,7 @@
         ["memories.html", "Memories"],
         ["game.html", "Play"],
         ["movies.html", "Movies"],
+        ["dates.html", "Dates"],
         ["messages.html", "Chat"]
       ];
       const secondaryLinks = [

@@ -45,6 +45,12 @@
       "short_name": "Movies",
       "url": "./movies.html",
       "icons": [{ "src": "images/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Date Planner",
+      "short_name": "Dates",
+      "url": "./dates.html",
+      "icons": [{ "src": "images/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }

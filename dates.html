@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="description" content="Princess and Frog's private shared date planner for ideas, votes, availability, and plans.">
+  <meta name="theme-color" content="#f6f0e6">
+  <meta property="og:title" content="Our Date Planner | Princess + Frog">
+  <meta property="og:image" content="https://iso-derek.github.io/our-little-corner/images/og-cover.jpg">
+  <title>Our Date Planner | Princess + Frog</title>
+  <link rel="icon" href="images/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=20260824-8">
+</head>
+<body data-page="dates">
+  <header class="site-header">
+    <a class="brand" href="index.html" aria-label="Princess and Frog home"><span class="brand-monogram" aria-hidden="true">PF</span><span>Princess + Frog</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="siteNav"><span></span><span></span><span></span><span class="sr-only">Open menu</span></button>
+    <nav class="nav" id="siteNav" aria-label="Main navigation">
+      <a href="index.html">Home</a><a href="letters.html">Letters</a><a href="memories.html">Memories</a><a href="game.html">Play</a><a href="movies.html">Movies</a><a href="dates.html">Dates</a><a href="messages.html">Chat</a><a href="badges.html">Badges</a><a href="gifts.html">Gifts</a><a href="quotes.html">Things we said</a><a href="love.html">Love notes</a>
+    </nav>
+  </header>
+
+  <main class="page date-page" id="mainContent">
+    <section class="page-title date-intro">
+      <div><p class="eyebrow">Make time for us</p><h1>Date<br>Planner</h1></div>
+      <div class="date-intro-copy">
+        <p>Dream up plans together, compare free time, vote on favourites, and let the picker settle the final choice.</p>
+        <a class="text-action" href="#datePlanner">Open our shortlist <span aria-hidden="true">&darr;</span></a>
+      </div>
+    </section>
+
+    <section class="date-planner" id="datePlanner" aria-labelledby="datePlannerTitle">
+      <div class="planner-heading">
+        <div><p class="eyebrow">Our next little adventure</p><h2 id="datePlannerTitle">The shortlist.</h2></div>
+        <button class="btn primary" id="chooseDateIdea" type="button">Choose our next date</button>
+      </div>
+      <div class="selected-date" id="selectedDateIdea" aria-live="polite"><span>No date chosen yet</span><strong>Vote on ideas or let the picker surprise you.</strong></div>
+      <div class="availability-strip">
+        <label>Your next free time<input id="dateAvailability" type="datetime-local"></label>
+        <button class="btn" id="saveAvailability" type="button">Share my availability</button>
+        <div id="availabilitySummary">Waiting for both schedules.</div>
+      </div>
+      <div class="planner-layout">
+        <form class="date-idea-form" id="dateIdeaForm">
+          <p class="composer-title">Add to our list</p>
+          <h3>Plan something lovely</h3>
+          <label>Idea<input id="dateIdeaTitle" type="text" maxlength="100" placeholder="Paint together, late-night dessert..." required></label>
+          <div class="form-row">
+            <label>When<input id="dateIdeaWhen" type="datetime-local"></label>
+            <label>Budget<select id="dateIdeaBudget"><option value="Free">Free</option><option value="Low">Low</option><option value="Medium" selected>Medium</option><option value="Treat">A proper treat</option></select></label>
+          </div>
+          <label>Location<input id="dateIdeaLocation" type="text" maxlength="100" placeholder="Home, London, somewhere new..."></label>
+          <label>Little details<textarea id="dateIdeaNotes" maxlength="300" rows="3" placeholder="What would make this date special?"></textarea></label>
+          <button class="btn primary" type="submit">Add to our shortlist</button>
+        </form>
+        <div class="date-idea-list" id="dateIdeaList" aria-live="polite"></div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js?v=20260824-1"></script>
+  <script src="auth.js?v=20260824-2"></script>
+  <script src="script.js?v=20260824-8"></script>
+  <script src="app-enhancements.js?v=20260824-5"></script>
+  <script src="games-plus.js?v=20260824-5"></script>
+  <script src="couple-hub.js?v=20260824-5"></script>
+</body>
+</html>
