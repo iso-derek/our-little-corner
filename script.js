@@ -639,12 +639,13 @@
   }
 
   function collectLightboxItems() {
-    return [...document.querySelectorAll(".june21-photo img, .memory-photo img, .gift-card .managed-photo img")]
+    return [...document.querySelectorAll(".june21-photo img, .us-photo img, .memory-photo img, .gift-card .managed-photo img")]
       .filter((img) => !img.hidden && img.getAttribute("src"))
       .map((img) => ({
         src: img.currentSrc || img.src,
         title: img.dataset.storyTitle || img.alt,
-        trigger: img
+        trigger: img,
+        rotate: img.dataset.rotate || ""
       }));
   }
 
@@ -655,6 +656,7 @@
     const image = lightbox.querySelector("img");
     image.src = item.src;
     image.alt = item.title;
+    image.classList.toggle("is-rotated-photo", item.rotate === "90");
     lightbox.querySelector("p").textContent = item.title;
     const count = lightbox.querySelector(".lightbox-count");
     if (count) count.textContent = `${lightboxIndex + 1} / ${lightboxItems.length}`;
@@ -675,7 +677,7 @@
     lightboxItems = collectLightboxItems();
     let index = lightboxItems.findIndex((item) => item.src === src || item.trigger === trigger);
     if (index < 0) {
-      lightboxItems.push({ src, title, trigger });
+      lightboxItems.push({ src, title, trigger, rotate: trigger?.dataset?.rotate || "" });
       index = lightboxItems.length - 1;
     }
     lightboxIndex = index;
@@ -2385,6 +2387,10 @@
 
     const collectionKey = "pf_memory_items";
     const memoryDefaults = [
+      ["us-bike", "Two wheels, one playlist", "images/us-bike.jpg", true, "", "Us, lately", "Outside, together, and making a day of it.", false, true],
+      ["us-mirror", "Right where I want to be", "images/us-mirror.jpg", false, "", "Us, lately", "A quiet mirror moment worth keeping.", false, true],
+      ["us-food-date", "A date served in two halves", "images/us-food-date.jpg", false, "", "Us, lately", "Good food, better company.", false, true],
+      ["us-neon", "Caught in neon", "images/us-neon-mirror.jpg", false, "", "Us, lately", "One more reflection of us.", true, true],
       ["alton", "Alton Towers 🎢", "images/memory1.jpeg"],
       ["museum", "Museum of Illusions ✨", "images/memory2.jpeg"],
       ["train", "Train ride 🚆", "images/memory11.jpeg"],
@@ -2398,17 +2404,31 @@
       ["birthday", "Her birthday 🎂", "images/memory8.jpeg"],
       ["go-ape", "Vals / GO APE 🌲", "images/memory9.jpeg"],
       ["first-date", "Our first date 💕", "images/memory10.jpeg"]
-    ].map(([id, title, defaultSrc, featured, assetKey]) => ({
+    ].map(([id, title, defaultSrc, featured, assetKey, defaultDate, defaultCaption, rotate, directSrc]) => ({
       id,
       title,
       defaultSrc,
       assetKey: assetKey || defaultSrc.split("/").pop()?.replace(/\.[^.]+$/, ""),
       featured: Boolean(featured),
-      date: shared.get("pf_memory_" + id + "_date", ""),
-      caption: shared.get("pf_memory_" + id + "_caption", ""),
-      photo: shared.get("pf_memory_" + id + "_photo", "")
+      date: shared.get("pf_memory_" + id + "_date", defaultDate || ""),
+      caption: shared.get("pf_memory_" + id + "_caption", defaultCaption || ""),
+      photo: shared.get("pf_memory_" + id + "_photo", ""),
+      rotate: Boolean(rotate),
+      directSrc: Boolean(directSrc)
     }));
     let items = getManagedItems(collectionKey, memoryDefaults);
+    const couplePhotoIds = ["us-bike", "us-mirror", "us-food-date", "us-neon"];
+    if (!shared.get("pf_couple_photos_seeded_v1", false)) {
+      const existingIds = new Set(items.map((item) => item.id));
+      const missingCouplePhotos = memoryDefaults.filter((item) => couplePhotoIds.includes(item.id) && !existingIds.has(item.id));
+      if (missingCouplePhotos.length) {
+        items = [...missingCouplePhotos, ...items];
+        Promise.resolve(shared.set(collectionKey, items))
+          .then(() => shared.set("pf_couple_photos_seeded_v1", true));
+      } else {
+        shared.set("pf_couple_photos_seeded_v1", true);
+      }
+    }
     const flowerIds = ["flower-days", "flowers", "june21-flowers"];
     const missingFlowers = flowerIds.some((id) => !items.some((item) => item.id === id));
     if (missingFlowers) {
@@ -2437,6 +2457,7 @@
 
     function builtInSources(item) {
       if (item.photo) return { src: shared.photoPath(item.photo) ? "" : item.photo, srcset: "" };
+      if (item.directSrc && item.defaultSrc) return { src: item.defaultSrc, srcset: "" };
       const source = item.assetKey || (item.defaultSrc || "").split("/").pop()?.replace(/\.[^.]+$/, "");
       if (!source) return { src: "", srcset: "" };
       return {
@@ -2453,10 +2474,10 @@
       grid.innerHTML = items.map((item, index) => {
         const sources = builtInSources(item);
         const layout = item.featured ? "featured" : `memory-layout-${index % 4}`;
-        return '<article class="memory-card managed-card ' + layout + '" data-item-id="' + escapeHtml(item.id) + '">' +
+        return '<article class="memory-card managed-card ' + layout + (item.rotate ? " is-rotated" : "") + '" data-item-id="' + escapeHtml(item.id) + '">' +
           '<span class="memory-sequence" aria-hidden="true">' + String(index + 1).padStart(2, "0") + '</span>' +
           '<div class="managed-photo memory-photo">' +
-            '<img loading="lazy" decoding="async" src="' + escapeHtml(sources.src) + '" ' + (sources.srcset ? 'srcset="' + escapeHtml(sources.srcset) + '" sizes="(max-width: 760px) 92vw, 54vw" ' : '') + 'alt="' + escapeHtml(item.title) + '" ' + (sources.src ? "" : "hidden") + '>' +
+            '<img loading="' + (index < 4 ? "eager" : "lazy") + '" decoding="async" src="' + escapeHtml(sources.src) + '" ' + (sources.srcset ? 'srcset="' + escapeHtml(sources.srcset) + '" sizes="(max-width: 760px) 92vw, 54vw" ' : '') + 'alt="' + escapeHtml(item.title) + '" ' + (item.rotate ? 'data-rotate="90" ' : '') + (sources.src ? "" : "hidden") + '>' +
             '<div class="image-placeholder" ' + (sources.src ? "hidden" : "") + '>Add a photo<br>' + escapeHtml(item.title) + '</div>' +
             '<label class="photo-upload-btn" title="Upload a memory photo"><span>' + (sources.src ? "Replace photo" : "Add photo") + '</span>' +
               '<input type="file" accept="image/jpeg,image/png,image/webp,image/gif">' +
@@ -2827,7 +2848,7 @@
 
   function initHomeGallery() {
     if (controllers.homeGallery) return;
-    const images = document.querySelectorAll(".june21-photo img");
+    const images = document.querySelectorAll(".june21-photo img, .us-photo img");
     if (!images.length) return;
     images.forEach((img) => {
       img.tabIndex = 0;

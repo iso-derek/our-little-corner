@@ -55,7 +55,7 @@
     gate.innerHTML = `
       <div class="account-gate-shell">
         <aside class="account-gate-story" aria-hidden="true">
-          <picture><source media="(max-width: 760px)" srcset="images/optimized/june21-flowers-640.webp"><img src="images/optimized/june21-flowers-1200.webp" alt=""></picture>
+          <picture><img src="images/us-mirror.jpg" alt=""></picture>
           <div class="account-gate-shade"></div>
           <div class="account-story-copy">
             <div class="account-story-mark"><span>P</span><i></i><span>F</span></div>
