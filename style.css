@@ -3700,6 +3700,15 @@ textarea {
   line-height: 1.75;
 }
 
+.us-chapter-heading .us-chapter-statement {
+  color: #f0cd86;
+  font-family: var(--serif);
+  font-size: 38px;
+  font-weight: 500;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
 .us-gallery {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -5607,6 +5616,10 @@ body:not(.is-editing-gifts) .gift-card .photo-upload-btn {
 
   .us-chapter-heading > p {
     font-size: 14px;
+  }
+
+  .us-chapter-heading .us-chapter-statement {
+    font-size: 28px;
   }
 
   .us-gallery {
