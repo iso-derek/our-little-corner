@@ -21,7 +21,21 @@
   let initialized = false;
   let dashboardTimer = null;
   let gameTimerInterval = null;
+  let presenceNudgeTimer = null;
   let lastCelebrationId = null;
+  let lastNudgeAt = 0;
+
+  const ALERT_SETTINGS = {
+    love: { icon: "💗", label: "Love notes", detail: "Small words, right on time" },
+    memory: { icon: "📸", label: "Memories", detail: "New moments on your wall" },
+    letter: { icon: "💌", label: "Letters", detail: "A letter or voice note arrives" },
+    message: { icon: "💬", label: "Messages", detail: "Private chat updates" },
+    game: { icon: "🎮", label: "Game invites", detail: "Invites, turns, and rematches" },
+    ritual: { icon: "✨", label: "Daily ritual", detail: "Both answers are ready" },
+    date: { icon: "🗓️", label: "Date plans", detail: "Ideas, votes, and final picks" },
+    movie: { icon: "🎬", label: "Movie Shelf", detail: "Watchlist and rating changes" },
+    nudge: { icon: "👆", label: "Little nudges", detail: "A tap from your favourite person" }
+  };
 
   const guides = {
     letters: {
@@ -156,6 +170,41 @@
 
   function roleName(value) {
     return value === "frog" ? "Frog" : value === "princess" ? "Princess" : "Partner";
+  }
+
+  function decorateEmoji(root = document) {
+    const selectors = [
+      ".nav a", ".page-title h1", ".home-hero h1", ".feature-card strong", ".game-tab",
+      ".badge-card strong", ".dashboard-grid strong", ".ritual-heading h2", ".planner-heading h2",
+      ".movie-intro h1", ".movie-collection h2", ".welcome-stage h1"
+    ];
+    const emojiPattern = /\p{Extended_Pictographic}(?:\uFE0F|\uFE0E)?(?:\u200D\p{Extended_Pictographic}(?:\uFE0F|\uFE0E)?)*/gu;
+    root.querySelectorAll(selectors.join(",")).forEach((element) => {
+      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+      const textNodes = [];
+      while (walker.nextNode()) {
+        if (!walker.currentNode.parentElement?.closest(".emoji-mark")) textNodes.push(walker.currentNode);
+      }
+      textNodes.forEach((node) => {
+        const value = node.nodeValue || "";
+        emojiPattern.lastIndex = 0;
+        if (!emojiPattern.test(value)) return;
+        emojiPattern.lastIndex = 0;
+        const fragment = document.createDocumentFragment();
+        let cursor = 0;
+        value.replace(emojiPattern, (emoji, offset) => {
+          fragment.append(value.slice(cursor, offset));
+          const mark = document.createElement("span");
+          mark.className = "emoji-mark";
+          mark.textContent = emoji;
+          fragment.append(mark);
+          cursor = offset + emoji.length;
+          return emoji;
+        });
+        fragment.append(value.slice(cursor));
+        node.replaceWith(fragment);
+      });
+    });
   }
 
   function escapeHtml(value) {
@@ -617,6 +666,60 @@
     };
   }
 
+  async function sendPartnerNudge(button, status) {
+    const cooldown = 15000;
+    const remaining = cooldown - (Date.now() - lastNudgeAt);
+    if (remaining > 0) {
+      runtime().toast(`Give the last nudge ${Math.ceil(remaining / 1000)} seconds to land`);
+      return;
+    }
+    lastNudgeAt = Date.now();
+    button?.classList.add("is-sending");
+    if (button) button.disabled = true;
+    if (navigator.vibrate) navigator.vibrate([35, 35, 55]);
+    await window.CornerNotifications?.create?.({
+      kind: "nudge",
+      title: `${roleName(role())} is tapping you in`,
+      body: "Your favourite person wants you in your little corner.",
+      url: "game.html"
+    });
+    if (status) status.textContent = `Your nudge is on its way to ${roleName(otherRole())}.`;
+    runtime().toast(`Nudge sent to ${roleName(otherRole())}`);
+    window.setTimeout(() => {
+      button?.classList.remove("is-sending");
+      if (button) button.disabled = false;
+    }, 1200);
+  }
+
+  function initPresenceNudge() {
+    const button = document.getElementById("presenceNudge");
+    if (page !== "game" || !button || button.dataset.ready === "true") return;
+    button.dataset.ready = "true";
+
+    const render = (presence) => {
+      const partner = otherRole();
+      const seenAt = Date.parse(shared().get(`pf_presence_${partner}`, "") || "");
+      const online = typeof presence?.[partner] === "boolean"
+        ? presence[partner]
+        : Number.isFinite(seenAt) && Date.now() - seenAt < 90000;
+      const partnerPill = document.getElementById(`${partner}Presence`);
+      partnerPill?.classList.add("partner-presence");
+      partnerPill?.insertAdjacentElement("afterend", button);
+      button.hidden = online;
+      button.querySelector("strong").textContent = `Nudge ${roleName(partner)}`;
+      button.querySelector("small").textContent = partner === "princess" ? "Tap to call her into the room" : "Tap to call him into the room";
+      button.setAttribute("aria-label", `Send ${roleName(partner)} a notification to join the Game Room`);
+    };
+
+    button.addEventListener("click", () => sendPartnerNudge(button));
+    document.addEventListener("corner:game-presence", (event) => render(event.detail));
+    document.addEventListener("corner:remote-change", (event) => {
+      if (event.detail?.new?.key === `pf_presence_${otherRole()}`) render();
+    });
+    render();
+    presenceNudgeTimer = window.setInterval(render, 10000);
+  }
+
   function initAccountTools() {
     const drawer = document.querySelector(".account-drawer");
     if (!drawer || drawer.querySelector(".notification-preferences")) return;
@@ -624,16 +727,36 @@
     const section = document.createElement("section");
     section.className = "notification-preferences";
     section.innerHTML = `
-      <div class="notification-heading"><div><p class="eyebrow">Your alerts</p><h3>Notification controls</h3></div></div>
+      <div class="notification-heading">
+        <div><p class="eyebrow">Your signal settings</p><h3>Stay close, softly.</h3><p>Choose which moments are allowed to find you.</p></div>
+        <span class="notification-orbit" aria-hidden="true"><i></i><b>✦</b></span>
+      </div>
       <div class="notification-toggle-grid">
-        ${Object.entries({ love: "Love notes", memory: "Memories", letter: "Letters", message: "Messages", game: "Game invites", ritual: "Daily ritual", date: "Date plans", movie: "Movie Shelf", nudge: "Little nudges" }).map(([kind, label]) => `<label><input type="checkbox" data-notification-kind="${kind}" ${prefs.enabled[kind] ? "checked" : ""}><span>${label}</span></label>`).join("")}
+        ${Object.entries(ALERT_SETTINGS).map(([kind, item]) => `
+          <label class="notification-choice">
+            <input type="checkbox" data-notification-kind="${kind}" ${prefs.enabled[kind] ? "checked" : ""}>
+            <span class="alert-symbol" aria-hidden="true">${item.icon}</span>
+            <span class="alert-copy"><strong>${item.label}</strong><small>${item.detail}</small></span>
+            <span class="alert-switch" aria-hidden="true"><i></i></span>
+          </label>`).join("")}
       </div>
-      <div class="quiet-hours">
-        <label>Quiet from<input type="time" data-quiet-start value="${escapeHtml(prefs.quietStart)}"></label>
-        <label>Until<input type="time" data-quiet-end value="${escapeHtml(prefs.quietEnd)}"></label>
+      <div class="quiet-hours-shell">
+        <div class="settings-subhead"><span aria-hidden="true">☾</span><div><strong>Quiet hours</strong><small>Keep the closeness, protect the sleep.</small></div></div>
+        <div class="quiet-hours">
+          <label><span>From</span><input type="time" data-quiet-start value="${escapeHtml(prefs.quietStart)}"></label>
+          <label><span>Until</span><input type="time" data-quiet-end value="${escapeHtml(prefs.quietEnd)}"></label>
+        </div>
       </div>
-      <label class="preview-toggle"><input type="checkbox" data-notification-preview ${prefs.preview ? "checked" : ""}><span>Show message previews</span></label>
-      <div class="button-row"><button class="btn primary" type="button" data-save-notification-prefs>Save alert settings</button><button class="btn" type="button" data-send-nudge>Send a little nudge</button></div>
+      <label class="preview-toggle notification-choice">
+        <input type="checkbox" data-notification-preview ${prefs.preview ? "checked" : ""}>
+        <span class="alert-symbol" aria-hidden="true">👁️</span>
+        <span class="alert-copy"><strong>Message previews</strong><small>Show a little of the message in alerts</small></span>
+        <span class="alert-switch" aria-hidden="true"><i></i></span>
+      </label>
+      <div class="button-row notification-actions">
+        <button class="btn primary" type="button" data-save-notification-prefs><span aria-hidden="true">✓</span> Save my signals</button>
+        <button class="btn nudge-action" type="button" data-send-nudge><span class="nudge-motion" aria-hidden="true"><span class="nudge-hand">👆</span><i></i><i></i></span><span>Nudge ${roleName(otherRole())}</span></button>
+      </div>
       <p class="form-status" data-notification-status aria-live="polite"></p>`;
     drawer.querySelector(".account-commands")?.insertAdjacentElement("afterend", section);
 
@@ -650,10 +773,8 @@
       section.querySelector("[data-notification-status]").textContent = "Your notification choices are saved.";
       runtime().toast("Alert settings saved");
     });
-    section.querySelector("[data-send-nudge]").addEventListener("click", async () => {
-      await window.CornerNotifications?.create?.({ kind: "nudge", title: `${roleName(role())} is thinking of you`, body: "A little nudge from your favourite person is waiting.", url: "index.html" });
-      section.querySelector("[data-notification-status]").textContent = `A gentle nudge was sent to ${roleName(otherRole())}.`;
-      runtime().toast("Nudge sent");
+    section.querySelector("[data-send-nudge]").addEventListener("click", (event) => {
+      sendPartnerNudge(event.currentTarget, section.querySelector("[data-notification-status]"));
     });
 
     const backup = document.createElement("section");
@@ -813,14 +934,17 @@
     const planner = initDatePlanner();
     const movies = initMovieShelf();
     initAccountTools();
+    initPresenceNudge();
     initGameNightConsole();
     renderDashboard();
+    requestAnimationFrame(() => decorateEmoji());
     if (page === "home") dashboardTimer = window.setInterval(renderDashboard, 20000);
     document.addEventListener("corner:remote-change", (event) => {
       refreshFeatures(event);
       ritual?.render?.();
       planner?.render?.();
       movies?.render?.();
+      requestAnimationFrame(() => decorateEmoji());
     });
   }
 

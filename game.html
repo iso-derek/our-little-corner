@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&amp;display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260824-1">
+  <link rel="stylesheet" href="style.css?v=20260824-2">
 </head>
 <body data-page="game">
   <header class="site-header">
@@ -53,6 +53,10 @@
       <div class="presence-list" aria-live="polite">
         <span class="presence-pill" id="frogPresence"><i></i> Frog is away</span>
         <span class="presence-pill" id="princessPresence"><i></i> Princess is away</span>
+        <button class="presence-nudge-button" id="presenceNudge" type="button" hidden>
+          <span class="nudge-motion" aria-hidden="true"><span class="nudge-hand">👆</span><i></i><i></i></span>
+          <span class="presence-nudge-copy"><strong>Nudge your partner</strong><small>Tap to bring them online</small></span>
+        </button>
         <button class="btn quiet-btn game-sync-button" id="syncGameState" type="button" title="Refresh every shared game"><span aria-hidden="true">↻</span> Refresh games</button>
       </div>
     </section>
@@ -330,9 +334,9 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=20260823-2"></script>
   <script src="auth.js?v=20260823-6"></script>
-  <script src="script.js?v=20260824-1"></script>
-  <script src="app-enhancements.js?v=20260824-1"></script>
-  <script src="games-plus.js?v=20260824-1"></script>
-  <script src="couple-hub.js?v=20260824-1"></script>
+  <script src="script.js?v=20260824-2"></script>
+  <script src="app-enhancements.js?v=20260824-2"></script>
+  <script src="games-plus.js?v=20260824-2"></script>
+  <script src="couple-hub.js?v=20260824-2"></script>
 </body>
 </html>

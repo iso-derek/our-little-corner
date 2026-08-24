@@ -813,14 +813,17 @@
 
     function renderPresence() {
       const now = Date.now();
+      const presence = {};
       ["frog", "princess"].forEach((player) => {
         const label = document.getElementById(`${player}Presence`);
         const seenAt = Date.parse(shared.get(`pf_presence_${player}`, ""));
         const online = Number.isFinite(seenAt) && now - seenAt < gamePresenceWindowMs;
+        presence[player] = online;
         const displayName = player === "frog" ? "Frog" : "Princess";
         label.classList.toggle("online", online);
         label.lastChild.textContent = online ? ` ${displayName} is here` : ` ${displayName} is away`;
       });
+      document.dispatchEvent(new CustomEvent("corner:game-presence", { detail: presence }));
     }
 
     async function heartbeat() {
