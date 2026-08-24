@@ -33,6 +33,43 @@
     return role === "frog" ? "Frog" : role === "princess" ? "Princess" : "Our Corner";
   }
 
+  function notificationPreferences(role) {
+    const saved = runtime()?.shared?.get(`pf_notification_preferences_${role}`, null);
+    const defaults = {
+      enabled: {
+        love: true,
+        memory: true,
+        letter: true,
+        message: true,
+        game: true,
+        ritual: true,
+        date: true,
+        movie: true,
+        nudge: true
+      },
+      quietStart: "22:30",
+      quietEnd: "08:00",
+      preview: true
+    };
+    return {
+      ...defaults,
+      ...(saved && typeof saved === "object" ? saved : {}),
+      enabled: { ...defaults.enabled, ...(saved?.enabled || {}) }
+    };
+  }
+
+  function inQuietHours(preferences, now = new Date()) {
+    const toMinutes = (value) => {
+      const [hours, minutes] = String(value || "").split(":").map(Number);
+      return Number.isFinite(hours) && Number.isFinite(minutes) ? (hours * 60) + minutes : null;
+    };
+    const start = toMinutes(preferences.quietStart);
+    const end = toMinutes(preferences.quietEnd);
+    if (start === null || end === null || start === end) return false;
+    const current = (now.getHours() * 60) + now.getMinutes();
+    return start < end ? current >= start && current < end : current >= start || current < end;
+  }
+
   const welcomeCopy = {
     princess: {
       eyebrow: "A private entrance for Her Royal Highness",
@@ -518,6 +555,10 @@
     if (key.startsWith("pf_media_letter_")) return { kind: "letter", title: "A voice note is waiting", body: `${roleName(identity().role)} recorded something for you.`, url: "letters.html" };
     if (key.startsWith("pf_media_memory_")) return { kind: "memory", title: "A memory has new media", body: `${roleName(identity().role)} added a recording to the Memory Wall.`, url: "memories.html" };
     if (key === "pf_messages" && Array.isArray(value) && value[0]?.sender === identity().role) return { kind: "message", title: `${roleName(identity().role)} sent a message`, body: value[0].text?.slice(0, 90) || "Open your chat.", url: "messages.html" };
+    if (/^pf_ritual_\d{4}-\d{2}-\d{2}_(frog|princess)$/.test(key)) return { kind: "ritual", title: `${roleName(identity().role)} completed today's ritual`, body: "Your shared reveal may be ready.", url: "index.html#dailyRitual" };
+    if (key === "pf_date_ideas") return { kind: "date", title: `${roleName(identity().role)} updated your date shortlist`, body: "A date idea is waiting for your vote.", url: "index.html#datePlanner" };
+    if (key === "pf_date_selected") return { kind: "date", title: "Your next date has been chosen", body: "Open the planner to see tonight's pick.", url: "index.html#datePlanner" };
+    if (key === "pf_movie_items") return { kind: "movie", title: `${roleName(identity().role)} updated the Movie Shelf`, body: "A film was added, watched, ranked, or rated.", url: "movies.html" };
     if (["pf_number_duel_round", "pf_word_round"].includes(key) && value?.id) return { kind: "game", title: `${roleName(identity().role)} started a game`, body: key.includes("word") ? "A Secret Word duel is ready." : "A Guess Number duel is ready.", url: "game.html" };
     if (key === "pf_game_invite" && value?.id && value.from === identity().role) return { kind: "game", title: `${roleName(identity().role)} invited you to play`, body: value.label || "A new game is waiting.", url: `game.html?game=${encodeURIComponent(value.game || "number")}` };
     return null;
@@ -527,15 +568,23 @@
     const me = identity();
     const client = window.CornerIdentity?.client;
     if (!details || !client || me.mode !== "account") return;
+    const recipientRole = otherRole(me.role);
+    const preferences = notificationPreferences(recipientRole);
+    if (preferences.enabled?.[details.kind] === false) return;
+    const storedDetails = preferences.preview === false
+      ? { ...details, body: "Something new is waiting in your private corner." }
+      : details;
     const { data, error } = await client.from("corner_notifications").insert({
       site_id: config.siteId || "princess-frog-corner",
       actor_id: me.user.id,
       actor_role: me.role,
-      recipient_role: otherRole(me.role),
-      ...details
+      recipient_role: recipientRole,
+      ...storedDetails
     }).select("id").single();
     if (error || !data) return;
-    client.functions.invoke("send-notification", { body: { notificationId: data.id } }).catch(() => {});
+    if (!inQuietHours(preferences)) {
+      client.functions.invoke("send-notification", { body: { notificationId: data.id } }).catch(() => {});
+    }
   }
 
   async function fromSharedChange(key, value) {
@@ -599,9 +648,13 @@
     const list = studio.querySelector(".media-attachment-list");
     const attachments = runtime().shared.get(studio.dataset.mediaKey, []);
     if (!Array.isArray(attachments) || !attachments.length) {
-      list.innerHTML = '<p class="media-empty">No recordings yet.</p>';
+      list.innerHTML = "";
+      list.hidden = true;
+      studio.classList.add("media-studio-empty");
       return;
     }
+    list.hidden = false;
+    studio.classList.remove("media-studio-empty");
     const rows = await Promise.all(attachments.map(async (item) => ({ ...item, url: await signedMediaUrl(item.path) })));
     list.innerHTML = rows.map((item) => {
       const safeUrl = escapeHtml(item.url);
@@ -746,7 +799,7 @@
     studio.dataset.mediaKind = kind;
     studio.dataset.itemId = itemId;
     studio.innerHTML = `
-      <div class="media-attachment-list"><p class="media-empty">Loading recordings...</p></div>
+      <div class="media-attachment-list" hidden></div>
       <video class="recording-preview" muted playsinline hidden></video>
       <div class="media-controls">
         <button class="btn record-audio" type="button">Record voice</button>

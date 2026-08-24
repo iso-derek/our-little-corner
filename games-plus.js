@@ -61,15 +61,17 @@
     const history = shared().get("pf_game_history", []);
     const items = Array.isArray(history) ? history : [];
     if (items.some((item) => item.id === entry.id)) return;
-    await shared().set("pf_game_history", [{
+    const completedMatch = {
       id: entry.id,
       game: entry.game,
       label: entry.label || labels[entry.game] || "Game",
       winner: entry.winner || null,
       result: entry.result || "Completed",
       playedAt: entry.playedAt || new Date().toISOString()
-    }, ...items].slice(0, 60));
+    };
+    await shared().set("pf_game_history", [completedMatch, ...items].slice(0, 60));
     renderLobby();
+    window.CornerExperience?.celebrateMatch?.(completedMatch);
   }
 
   function renderLobby() {

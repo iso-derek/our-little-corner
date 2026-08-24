@@ -39,6 +39,12 @@
       "short_name": "Memories",
       "url": "./memories.html",
       "icons": [{ "src": "images/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Movie Shelf",
+      "short_name": "Movies",
+      "url": "./movies.html",
+      "icons": [{ "src": "images/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }

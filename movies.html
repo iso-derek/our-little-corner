@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="description" content="Princess and Frog's private movie shelf for watchlists, ratings, and movie-night picks.">
+  <meta name="theme-color" content="#f6f0e6">
+  <meta property="og:title" content="Our Movie Shelf | Princess + Frog">
+  <meta property="og:image" content="https://iso-derek.github.io/our-little-corner/images/og-cover.jpg">
+  <title>Our Movie Shelf | Princess + Frog</title>
+  <link rel="icon" href="images/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=20260824-1">
+</head>
+<body data-page="movies">
+  <header class="site-header">
+    <a class="brand" href="index.html" aria-label="Princess and Frog home"><span class="brand-monogram" aria-hidden="true">PF</span><span>Princess + Frog</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="siteNav"><span></span><span></span><span></span><span class="sr-only">Open menu</span></button>
+    <nav class="nav" id="siteNav" aria-label="Main navigation">
+      <a href="index.html">Home</a><a href="letters.html">Letters</a><a href="memories.html">Memories</a><a href="game.html">Play</a><a href="movies.html">Movies</a><a href="messages.html">Chat</a><a href="badges.html">Badges</a><a href="gifts.html">Gifts</a><a href="quotes.html">Things we said</a><a href="love.html">Love notes</a>
+    </nav>
+  </header>
+
+  <main class="page movie-page" id="mainContent">
+    <section class="page-title movie-intro">
+      <div><p class="eyebrow">Tonight on our screen</p><h1>Movie<br>Shelf</h1></div>
+      <div class="movie-intro-copy">
+        <p>Build watchlists together, tick films off, rate the good ones, and let chance settle the next movie-night debate.</p>
+        <button class="manage-toggle" id="movieEditToggle" type="button" aria-pressed="false"><span aria-hidden="true">+</span> Manage shelf</button>
+      </div>
+    </section>
+
+    <section class="movie-control-room" aria-label="Movie shelf controls">
+      <div class="movie-stats">
+        <span><strong id="movieTotal">0</strong> on the shelf</span>
+        <span><strong id="movieWatched">0</strong> watched</span>
+        <span><strong id="movieAverage">&ndash;</strong> average rating</span>
+      </div>
+      <div class="movie-actions">
+        <div class="segmented-control" id="movieFilters" aria-label="Filter movie shelf">
+          <button class="active" type="button" data-movie-filter="all">All</button>
+          <button type="button" data-movie-filter="waiting">To watch</button>
+          <button type="button" data-movie-filter="watched">Watched</button>
+        </div>
+        <button class="btn primary" id="pickMovie" type="button">Pick tonight&rsquo;s movie</button>
+      </div>
+      <div class="movie-pick" id="moviePick" aria-live="polite"><span>Tonight&rsquo;s pick</span><strong>Let the shelf surprise you.</strong></div>
+    </section>
+
+    <form class="collection-composer movie-composer" id="movieForm" hidden>
+      <p class="composer-title">Add to the shelf</p>
+      <label>Movie title<input id="movieTitle" type="text" maxlength="120" placeholder="What should we watch?" required></label>
+      <label>Collection<input id="movieCollection" type="text" maxlength="80" placeholder="Nolan, Hunger Games, MCU..."></label>
+      <label>Picked by<select id="moviePickedBy"><option value="together">Together</option><option value="frog">Frog</option><option value="princess">Princess</option></select></label>
+      <label>Note<input id="movieNote" type="text" maxlength="180" placeholder="Why it made the list"></label>
+      <button class="btn primary" type="submit">Add movie</button>
+    </form>
+
+    <section class="movie-collections" id="movieCollections" aria-live="polite"></section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js?v=20260823-2"></script>
+  <script src="auth.js?v=20260823-6"></script>
+  <script src="script.js?v=20260824-1"></script>
+  <script src="app-enhancements.js?v=20260824-1"></script>
+  <script src="games-plus.js?v=20260824-1"></script>
+  <script src="couple-hub.js?v=20260824-1"></script>
+</body>
+</html>

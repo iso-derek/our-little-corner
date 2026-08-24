@@ -19,6 +19,7 @@
   let lightboxIndex = 0;
   let lightboxTrigger = null;
   let lightboxTouchStart = 0;
+  const signedPhotoCache = new Map();
 
   const defaultLoveNotes = [
     "The frog misses his princess 🐸👑",
@@ -146,8 +147,31 @@
         toast("Photo storage needs setup");
         return null;
       }
-      const { data } = supabaseClient.storage.from("corner-photos").getPublicUrl(path);
-      return data.publicUrl;
+      return `corner-photos:${path}`;
+    },
+    photoPath(value) {
+      const source = String(value || "");
+      if (source.startsWith("corner-photos:")) return source.slice("corner-photos:".length);
+      const markers = [
+        "/storage/v1/object/public/corner-photos/",
+        "/storage/v1/object/sign/corner-photos/"
+      ];
+      const marker = markers.find((item) => source.includes(item));
+      if (!marker) return "";
+      return decodeURIComponent(source.split(marker)[1].split("?")[0]);
+    },
+    async resolvePhoto(value) {
+      const path = this.photoPath(value);
+      if (!path || !supabaseClient) return String(value || "");
+      const cached = signedPhotoCache.get(path);
+      if (cached && cached.expires > Date.now()) return cached.url;
+      const { data, error } = await supabaseClient.storage.from("corner-photos").createSignedUrl(path, 3600);
+      if (error || !data?.signedUrl) {
+        console.warn("Private photo could not be opened.", error);
+        return "";
+      }
+      signedPhotoCache.set(path, { url: data.signedUrl, expires: Date.now() + (50 * 60 * 1000) });
+      return data.signedUrl;
     }
   };
 
@@ -1988,7 +2012,7 @@
     }
 
     const collectionKey = "pf_badge_items";
-    const defaults = [
+    const originalBadges = [
       { id: "first-date", title: "First Date Unlocked", emoji: "💕" },
       { id: "said-yes", title: "She Said Yes — 21 June", emoji: "💍" },
       { id: "flowers", title: "Flowers Delivered", emoji: "🌷" },
@@ -2002,7 +2026,39 @@
       { id: "hike", title: "The Hike", emoji: "🥾" },
       { id: "date-night", title: "Date Night", emoji: "❤️" }
     ];
-    let items = getManagedItems(collectionKey, defaults);
+    const dateBadgeSeeds = [
+      { id: "date-tennis", title: "Tennis Date", emoji: "🎾" },
+      { id: "date-quad-biking", title: "Quad Biking", emoji: "🏍️" },
+      { id: "date-cruise", title: "Cruise Together", emoji: "🛳️" },
+      { id: "date-paint", title: "Paint Date", emoji: "🎨" },
+      { id: "date-karting", title: "Go-Karting", emoji: "🏁" },
+      { id: "date-camden", title: "London Camden Market", emoji: "🛍️" },
+      { id: "date-flicks", title: "Take Cool Ass Flicks", emoji: "📸" },
+      { id: "date-photobooth", title: "Photo Booth", emoji: "🎞️" },
+      { id: "date-winter-wonderland", title: "Winter Wonderland", emoji: "❄️" },
+      { id: "date-faaaah", title: "Faaaah", emoji: "✨" },
+      { id: "date-build-a-bear", title: "Build-A-Bear", emoji: "🧸" }
+    ];
+    const defaults = [...originalBadges, ...dateBadgeSeeds];
+    const seedMarker = "pf_date_badges_seeded_v1";
+
+    function withStarterBadges(saved, shouldSeedDates) {
+      const merged = Array.isArray(saved) ? saved.map((item) => ({ ...item })) : defaults.map((item) => ({ ...item }));
+      const existingIds = new Set(merged.map((item) => item.id));
+      if (!shouldSeedDates) return merged;
+      dateBadgeSeeds.forEach((item) => {
+        if (!existingIds.has(item.id)) merged.push({ ...item });
+      });
+      return merged;
+    }
+
+    const savedBadges = shared.get(collectionKey, null);
+    const shouldSeedDates = !shared.get(seedMarker, false);
+    let items = withStarterBadges(savedBadges, shouldSeedDates);
+    if (!Array.isArray(savedBadges) || shouldSeedDates) {
+      shared.set(collectionKey, items);
+      shared.set(seedMarker, true);
+    }
     let unlocked = { ...shared.get("pf_badges", {}) };
     let editing = false;
 
@@ -2113,7 +2169,13 @@
 
     controllers.managedBadges = {
       refresh() {
-        items = getManagedItems(collectionKey, defaults);
+        const saved = shared.get(collectionKey, null);
+        const addStarterDates = !shared.get(seedMarker, false);
+        items = withStarterBadges(saved, addStarterDates);
+        if (!Array.isArray(saved) || addStarterDates) {
+          shared.set(collectionKey, items);
+          shared.set(seedMarker, true);
+        }
         unlocked = { ...shared.get("pf_badges", {}) };
         render();
       }
@@ -2163,11 +2225,13 @@
       }
       grid.innerHTML = items.map((item, index) => {
         const hasPhoto = Boolean(item.photo);
+        const needsSignedPhoto = Boolean(shared.photoPath(item.photo));
+        const initialPhoto = needsSignedPhoto ? "" : item.photo;
         return '<article class="gift-card managed-card" data-item-id="' + escapeHtml(item.id) + '">' +
           '<span class="gift-number">' + String(index + 1).padStart(2, "0") + '</span>' +
           '<div class="managed-photo">' +
-            '<img loading="lazy" decoding="async" src="' + (hasPhoto ? escapeHtml(item.photo) : "") + '" alt="' + escapeHtml(item.title) + '" ' + (hasPhoto ? "" : "hidden") + '>' +
-            '<div class="gift-image" ' + (hasPhoto ? "hidden" : "") + '>Add a gift photo<br>' + escapeHtml(item.title) + '</div>' +
+            '<img loading="lazy" decoding="async" src="' + escapeHtml(initialPhoto || "") + '" alt="' + escapeHtml(item.title) + '" ' + (initialPhoto ? "" : "hidden") + '>' +
+            '<div class="gift-image" ' + (initialPhoto ? "hidden" : "") + '>' + (hasPhoto ? "Opening private photo..." : "Add a gift photo<br>" + escapeHtml(item.title)) + '</div>' +
             '<label class="photo-upload-btn" title="Upload a gift photo"><span>' + (hasPhoto ? "Replace photo" : "Add photo") + '</span>' +
               '<input type="file" accept="image/jpeg,image/png,image/webp,image/gif">' +
             '</label>' +
@@ -2218,6 +2282,12 @@
             openLightbox(img.currentSrc || img.src, item.title, img);
           }
         });
+        if (item.photo && shared.photoPath(item.photo)) {
+          shared.resolvePhoto(item.photo).then((url) => {
+            if (!url || !img.isConnected) return;
+            img.src = url;
+          });
+        }
       });
       grid.querySelectorAll("input[type='file']").forEach((input) => {
         input.addEventListener("change", async () => {
@@ -2353,7 +2423,7 @@
     }
 
     function builtInSources(item) {
-      if (item.photo) return { src: item.photo, srcset: "" };
+      if (item.photo) return { src: shared.photoPath(item.photo) ? "" : item.photo, srcset: "" };
       const source = item.assetKey || (item.defaultSrc || "").split("/").pop()?.replace(/\.[^.]+$/, "");
       if (!source) return { src: "", srcset: "" };
       return {
@@ -2433,6 +2503,12 @@
             openLightbox(img.currentSrc || img.src, item.title, img);
           }
         });
+        if (item.photo && shared.photoPath(item.photo)) {
+          shared.resolvePhoto(item.photo).then((url) => {
+            if (!url || !img.isConnected) return;
+            img.src = url;
+          });
+        }
       });
       grid.querySelectorAll("input[type='file']").forEach((input) => {
         input.addEventListener("change", async () => {
