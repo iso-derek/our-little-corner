@@ -278,20 +278,29 @@
     if (nav) {
       nav.id = "siteNav";
       nav.setAttribute("aria-label", "Main navigation");
-      const labels = {
-        "index.html": "Home",
-        "letters.html": "Letters",
-        "memories.html": "Memories",
-        "game.html": "Play",
-        "messages.html": "Chat",
-        "badges.html": "Badges",
-        "gifts.html": "Gifts",
-        "quotes.html": "Things we said",
-        "love.html": "Love notes"
-      };
-      nav.querySelectorAll("a").forEach((link) => {
-        const href = link.getAttribute("href");
-        if (labels[href]) link.textContent = labels[href];
+      const primaryLinks = [
+        ["index.html", "Home"],
+        ["letters.html", "Letters"],
+        ["memories.html", "Memories"],
+        ["game.html", "Play"],
+        ["movies.html", "Movies"],
+        ["messages.html", "Chat"]
+      ];
+      const secondaryLinks = [
+        ["badges.html", "Badges"],
+        ["gifts.html", "Gifts"],
+        ["quotes.html", "Things we said"],
+        ["love.html", "Love notes"]
+      ];
+      const linkMarkup = ([href, label]) => `<a href="${href}">${label}</a>`;
+      nav.innerHTML = `${primaryLinks.map(linkMarkup).join("")}
+        <details class="nav-more">
+          <summary><span>More</span><i aria-hidden="true"></i></summary>
+          <div class="nav-more-menu">${secondaryLinks.map(linkMarkup).join("")}</div>
+        </details>`;
+      const more = nav.querySelector(".nav-more");
+      document.addEventListener("click", (event) => {
+        if (more?.open && !more.contains(event.target)) more.removeAttribute("open");
       });
     }
 
@@ -394,6 +403,7 @@
       if (link.getAttribute("href") === current) {
         link.classList.add("active");
         link.setAttribute("aria-current", "page");
+        link.closest(".nav-more")?.querySelector("summary")?.classList.add("active");
       }
     });
   }

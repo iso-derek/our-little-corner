@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&amp;display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260824-3">
+  <link rel="stylesheet" href="style.css?v=20260824-4">
 </head>
 <body data-page="game">
   <header class="site-header">
@@ -36,20 +36,21 @@
 
   <main class="page game-page">
     <section class="page-title game-room-title">
-      <p class="eyebrow">Two players, one little corner</p>
-      <h1>Our Game Room 🎮</h1>
-      <p>Meet here from separate devices, invite each other in, and keep the score across every game.</p>
+      <p class="eyebrow">Your private match room</p>
+      <h1>Tonight,<br>we play.</h1>
+      <p>Seven live games, two private accounts, one shared scoreboard. Every choice and round stays in sync.</p>
     </section>
 
     <section class="game-identity-bar" aria-label="Player and connection status">
-      <div class="account-player-label">Playing as <strong id="accountPlayerName">Your account</strong></div>
-      <label class="preview-player-select">Playing as
-        <select id="gameIdentity">
-          <option value="">Choose player</option>
-          <option value="frog">Frog 🐸</option>
-          <option value="princess">Princess 👑</option>
-        </select>
-      </label>
+      <div class="game-session-intro">
+        <span class="game-session-avatar" id="gameSessionAvatar" aria-hidden="true">PF</span>
+        <div><p class="eyebrow">Account verified</p><strong id="gameSessionGreeting">Private match room</strong><small id="gameSessionDetail">Both lights turn green when you are ready together.</small></div>
+      </div>
+      <select id="gameIdentity" class="game-identity-source" tabindex="-1" aria-hidden="true" aria-label="Automatic player identity">
+        <option value="">Choose player</option>
+        <option value="frog">Frog</option>
+        <option value="princess">Princess</option>
+      </select>
       <div class="presence-list" aria-live="polite">
         <span class="presence-pill" id="frogPresence"><i></i> Frog is away</span>
         <span class="presence-pill" id="princessPresence"><i></i> Princess is away</span>
@@ -75,7 +76,7 @@
             <option value="truth">Truth or Dare</option>
             <option value="memory">Memory Match</option>
           </select>
-          <button class="btn primary" id="sendGameInvite" type="button">Invite to play</button>
+          <button class="btn primary" id="sendGameInvite" type="button">Send invite</button>
         </div>
       </div>
       <div class="game-invite-banner" id="gameInviteBanner" hidden aria-live="polite"></div>
@@ -100,13 +101,13 @@
     </section>
 
     <div class="game-tabs" role="tablist" aria-label="Choose a game">
-      <button class="game-tab active" id="numberTab" type="button" role="tab" aria-selected="true" aria-controls="numberGamePanel" data-game-tab="number">🔢 Guess Number</button>
-      <button class="game-tab" id="wordTab" type="button" role="tab" aria-selected="false" aria-controls="wordGamePanel" data-game-tab="word">🔤 Secret Word</button>
-      <button class="game-tab" id="sameTab" type="button" role="tab" aria-selected="false" aria-controls="sameGamePanel" data-game-tab="same">💕 Same Page</button>
-      <button class="game-tab" id="wouldTab" type="button" role="tab" aria-selected="false" aria-controls="wouldGamePanel" data-game-tab="would">A/B Would You Rather</button>
-      <button class="game-tab" id="triviaTab" type="button" role="tab" aria-selected="false" aria-controls="triviaGamePanel" data-game-tab="trivia">? Couple Trivia</button>
-      <button class="game-tab" id="truthTab" type="button" role="tab" aria-selected="false" aria-controls="truthGamePanel" data-game-tab="truth">T/D Truth or Dare</button>
-      <button class="game-tab" id="memoryTab" type="button" role="tab" aria-selected="false" aria-controls="memoryGamePanel" data-game-tab="memory">Match Memory Match</button>
+      <button class="game-tab active" id="numberTab" type="button" role="tab" aria-selected="true" aria-controls="numberGamePanel" data-game-tab="number"><span>01</span><strong>Guess Number</strong></button>
+      <button class="game-tab" id="wordTab" type="button" role="tab" aria-selected="false" aria-controls="wordGamePanel" data-game-tab="word"><span>02</span><strong>Secret Word</strong></button>
+      <button class="game-tab" id="sameTab" type="button" role="tab" aria-selected="false" aria-controls="sameGamePanel" data-game-tab="same"><span>03</span><strong>Same Page</strong></button>
+      <button class="game-tab" id="wouldTab" type="button" role="tab" aria-selected="false" aria-controls="wouldGamePanel" data-game-tab="would"><span>04</span><strong>Would You Rather</strong></button>
+      <button class="game-tab" id="triviaTab" type="button" role="tab" aria-selected="false" aria-controls="triviaGamePanel" data-game-tab="trivia"><span>05</span><strong>Couple Trivia</strong></button>
+      <button class="game-tab" id="truthTab" type="button" role="tab" aria-selected="false" aria-controls="truthGamePanel" data-game-tab="truth"><span>06</span><strong>Truth or Dare</strong></button>
+      <button class="game-tab" id="memoryTab" type="button" role="tab" aria-selected="false" aria-controls="memoryGamePanel" data-game-tab="memory"><span>07</span><strong>Memory Match</strong></button>
     </div>
 
     <section class="game-mode-panel" id="numberGamePanel" role="tabpanel" aria-labelledby="numberTab">
@@ -332,11 +333,11 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-config.js?v=20260823-2"></script>
-  <script src="auth.js?v=20260823-6"></script>
-  <script src="script.js?v=20260824-3"></script>
-  <script src="app-enhancements.js?v=20260824-3"></script>
-  <script src="games-plus.js?v=20260824-3"></script>
-  <script src="couple-hub.js?v=20260824-3"></script>
+  <script src="supabase-config.js?v=20260824-1"></script>
+  <script src="auth.js?v=20260824-1"></script>
+  <script src="script.js?v=20260824-4"></script>
+  <script src="app-enhancements.js?v=20260824-4"></script>
+  <script src="games-plus.js?v=20260824-4"></script>
+  <script src="couple-hub.js?v=20260824-4"></script>
 </body>
 </html>

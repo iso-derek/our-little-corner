@@ -1,4 +1,4 @@
-const CACHE_NAME = "pf-corner-v13";
+const CACHE_NAME = "pf-corner-v14";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -12,13 +12,13 @@ const APP_SHELL = [
   "./quotes.html",
   "./love.html",
   "./offline.html",
-  "./style.css?v=20260824-3",
-  "./auth.js?v=20260823-6",
-  "./script.js?v=20260824-3",
-  "./app-enhancements.js?v=20260824-3",
-  "./games-plus.js?v=20260824-3",
-  "./couple-hub.js?v=20260824-3",
-  "./supabase-config.js?v=20260823-2",
+  "./style.css?v=20260824-4",
+  "./auth.js?v=20260824-1",
+  "./script.js?v=20260824-4",
+  "./app-enhancements.js?v=20260824-4",
+  "./games-plus.js?v=20260824-4",
+  "./couple-hub.js?v=20260824-4",
+  "./supabase-config.js?v=20260824-1",
   "./site.webmanifest",
   "./images/favicon.svg",
   "./images/icon-192.png",
@@ -55,7 +55,11 @@ self.addEventListener("fetch", (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
           return response;
         })
-        .catch(async () => (await caches.match(request)) || (await caches.match("./offline.html")))
+        .catch(async () => (
+          (await caches.match(request))
+          || (await caches.match(new Request(`${url.origin}${url.pathname}`)))
+          || (await caches.match("./offline.html"))
+        ))
     );
     return;
   }

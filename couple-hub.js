@@ -144,6 +144,7 @@
     pickedBy: "together",
     watched: false,
     ratings: { frog: 0, princess: 0 },
+    reviews: { frog: "", princess: "" },
     note: "",
     watchedAt: ""
   }));
@@ -252,11 +253,16 @@
     const { rating, ...rest } = item || {};
     const legacyRating = Math.max(0, Math.min(5, Number(rating || 0)));
     const savedRatings = rest.ratings && typeof rest.ratings === "object" ? rest.ratings : {};
+    const savedReviews = rest.reviews && typeof rest.reviews === "object" ? rest.reviews : {};
     return {
       ...rest,
       ratings: {
         frog: Math.max(0, Math.min(5, Number(savedRatings.frog ?? legacyRating ?? 0))),
         princess: Math.max(0, Math.min(5, Number(savedRatings.princess ?? legacyRating ?? 0)))
+      },
+      reviews: {
+        frog: String(savedReviews.frog || ""),
+        princess: String(savedReviews.princess || "")
       }
     };
   }
@@ -508,11 +514,12 @@
     const savedMovies = shared().get(key, null);
     const shouldSeed = !shared().get(seedMarker, false);
     const hadLegacyRatings = Array.isArray(savedMovies) && savedMovies.some((item) => Object.prototype.hasOwnProperty.call(item, "rating"));
+    const hadMissingReviews = Array.isArray(savedMovies) && savedMovies.some((item) => !item.reviews || typeof item.reviews !== "object");
     let items = Array.isArray(savedMovies)
       ? (shouldSeed ? mergeSeeds(savedMovies, movieSeeds) : savedMovies.map((item) => ({ ...item })))
       : movieSeeds.map((item) => ({ ...item }));
     items = items.map(normalizeMovieItem);
-    if (!Array.isArray(savedMovies) || shouldSeed || hadLegacyRatings) {
+    if (!Array.isArray(savedMovies) || shouldSeed || hadLegacyRatings || hadMissingReviews) {
       shared().set(key, items);
       shared().set(seedMarker, true);
     }
@@ -566,6 +573,18 @@
                 </div>
                 <label class="movie-rating movie-my-rating"><span>Your rating as ${roleName(role())}</span><select aria-label="Your rating as ${roleName(role())} for ${escapeHtml(item.title)}"><option value="0">Not rated</option>${[1, 2, 3, 4, 5].map((value) => `<option value="${value}" ${Number(item.ratings?.[role()]) === value ? "selected" : ""}>${value} / 5</option>`).join("")}</select></label>
               </div>
+              <div class="movie-review-space">
+                <div class="movie-review-pair" aria-label="Frog and Princess reviews for ${escapeHtml(item.title)}">
+                  ${["frog", "princess"].map((player) => {
+                    const review = String(item.reviews?.[player] || "").trim();
+                    return `<article class="movie-person-review ${player} ${review ? "" : "is-empty"}"><header><i aria-hidden="true">${player === "frog" ? "F" : "P"}</i><strong>${roleName(player)}'s review</strong></header><p>${review ? escapeHtml(review) : "No review yet."}</p></article>`;
+                  }).join("")}
+                </div>
+                <details class="movie-review-editor">
+                  <summary>${item.reviews?.[role()] ? "Edit my review" : "Write my review"}<span aria-hidden="true">+</span></summary>
+                  <div><textarea maxlength="500" aria-label="Your review as ${roleName(role())} for ${escapeHtml(item.title)}" placeholder="What did you think?">${escapeHtml(item.reviews?.[role()] || "")}</textarea><button class="btn save-movie-review" type="button">Save my review</button></div>
+                </details>
+              </div>
               <div class="movie-edit-fields">
                 <input class="movie-collection-input" type="text" maxlength="80" value="${escapeHtml(item.collection || "")}" aria-label="Collection">
                 <input class="movie-rank-input" type="number" min="1" max="99" value="${item.rank || ""}" aria-label="Collection rank" placeholder="Rank">
@@ -584,6 +603,13 @@
         row.querySelector(".movie-my-rating select").addEventListener("change", async (event) => {
           const item = items.find((entry) => entry.id === id);
           await updateItem(id, { ratings: { ...item.ratings, [role()]: Number(event.target.value) } });
+          render();
+        });
+        row.querySelector(".save-movie-review").addEventListener("click", async () => {
+          const item = items.find((entry) => entry.id === id);
+          const review = row.querySelector(".movie-review-editor textarea").value.trim();
+          await updateItem(id, { reviews: { ...item.reviews, [role()]: review } });
+          runtime().toast(review ? `${roleName(role())}'s review saved` : "Your review was cleared");
           render();
         });
         const saveEdit = async () => {
@@ -619,6 +645,7 @@
         rank: null,
         watched: false,
         ratings: { frog: 0, princess: 0 },
+        reviews: { frog: "", princess: "" },
         watchedAt: ""
       });
       await shared().set(key, items);

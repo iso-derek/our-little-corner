@@ -7702,3 +7702,769 @@ p,
     animation: none !important;
   }
 }
+
+/* 2026 identity and product polish */
+.account-gate {
+  display: block;
+  padding: 0;
+  color: #fdf9f2;
+  background: #172327;
+}
+
+.account-gate-shell {
+  display: grid;
+  grid-template-columns: minmax(340px, 46%) minmax(460px, 1fr);
+  width: 100%;
+  min-height: 100dvh;
+}
+
+.account-gate-story {
+  position: relative;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: #203339;
+}
+
+.account-gate-story picture,
+.account-gate-story img,
+.account-gate-shade {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.account-gate-story img {
+  object-fit: cover;
+  object-position: center 38%;
+  transform: scale(1.015);
+  animation: pf-gate-image-in 1100ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.account-gate-shade {
+  background: linear-gradient(180deg, rgba(10, 21, 24, 0.08) 18%, rgba(10, 21, 24, 0.38) 58%, rgba(10, 21, 24, 0.94) 100%);
+}
+
+.account-story-copy {
+  position: absolute;
+  right: clamp(28px, 6vw, 82px);
+  bottom: clamp(34px, 7vh, 76px);
+  left: clamp(28px, 6vw, 82px);
+  z-index: 2;
+  max-width: 680px;
+}
+
+.account-story-mark {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  width: 150px;
+  margin-bottom: 32px;
+  font: 500 13px/1 var(--sans);
+}
+
+.account-story-mark i {
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.54);
+}
+
+.account-story-copy .eyebrow {
+  color: #f0cd86;
+}
+
+.account-story-copy h2 {
+  max-width: 760px;
+  margin: 12px 0 20px;
+  font: 500 clamp(52px, 6.7vw, 104px)/0.86 var(--serif);
+  letter-spacing: 0;
+}
+
+.account-story-copy > p:not(.eyebrow) {
+  max-width: 510px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.account-members {
+  display: flex;
+  gap: 34px;
+  margin-top: 30px;
+  padding-top: 22px;
+  border-top: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.account-members span {
+  display: inline-flex;
+  gap: 9px;
+  align-items: center;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.account-members i {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 50%;
+  color: white;
+  background: #3f715d;
+  font-size: 10px;
+  font-style: normal;
+}
+
+.account-members span:last-child i {
+  background: #bd5d7f;
+}
+
+.account-card {
+  position: relative;
+  display: grid;
+  align-content: center;
+  width: auto;
+  min-height: 100dvh;
+  padding: clamp(84px, 10vw, 152px) clamp(48px, 9vw, 156px) 72px;
+  border: 0;
+  color: #241c1b;
+  background: #fbf8f1;
+  text-align: left;
+}
+
+.account-card-top {
+  position: absolute;
+  top: 38px;
+  right: clamp(48px, 9vw, 156px);
+  left: clamp(48px, 9vw, 156px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #655d59;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.account-private-status {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  text-transform: none;
+}
+
+.account-private-status i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #4e7f69;
+  box-shadow: 0 0 0 4px rgba(78, 127, 105, 0.12);
+}
+
+.account-card-copy,
+.account-form,
+.account-linked,
+.account-authorized {
+  width: min(560px, 100%);
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.account-card-copy .eyebrow {
+  color: #7b2838;
+}
+
+.account-card h1 {
+  margin: 14px 0 22px;
+  font: 500 clamp(56px, 7vw, 92px)/0.86 var(--serif);
+  letter-spacing: 0;
+}
+
+.account-card h1 em {
+  color: #9a4151;
+  font-weight: 500;
+}
+
+.account-card-copy > p:not(.eyebrow) {
+  max-width: 520px;
+  margin: 0;
+  color: #746b66;
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+.account-form {
+  gap: 16px;
+  margin-top: 36px;
+}
+
+.account-form label {
+  display: grid;
+  gap: 8px;
+  color: #241c1b;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.account-form input {
+  width: 100%;
+  height: 58px;
+  padding: 0 18px;
+  color: #241c1b;
+  border: 1px solid #d8d0c8;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.64);
+}
+
+.account-form input:focus {
+  border-color: #a47635;
+  box-shadow: 0 0 0 3px rgba(164, 118, 53, 0.1);
+}
+
+.account-password-wrap {
+  position: relative;
+  display: block;
+}
+
+.account-password-wrap input {
+  padding-right: 74px;
+}
+
+.account-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  padding: 7px 8px;
+  border: 0;
+  color: #7b2838;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 800;
+  transform: translateY(-50%);
+}
+
+.account-form .account-submit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 60px;
+  margin-top: 4px;
+  padding: 0 22px;
+  color: #fff;
+  background: #7b2838;
+}
+
+.account-submit i {
+  font-size: 20px;
+  font-style: normal;
+  transition: transform 180ms ease;
+}
+
+.account-submit:hover i {
+  transform: translateX(4px);
+}
+
+.account-form-footer {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  justify-content: space-between;
+  color: #8b827c;
+  font-size: 10px;
+}
+
+.account-reset,
+.account-sign-out {
+  justify-self: auto;
+  padding: 0;
+  border: 0;
+  color: #7b2838;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.account-error {
+  min-height: 20px;
+  color: #a22f43;
+  font-size: 12px;
+  text-align: left;
+}
+
+.account-linked p {
+  color: #746b66;
+}
+
+.account-authorized {
+  display: grid;
+  gap: 10px;
+  padding: 28px 0;
+  border-top: 1px solid #d8d0c8;
+  border-bottom: 1px solid #d8d0c8;
+}
+
+.account-authorized[hidden] {
+  display: none;
+}
+
+.account-authorized span {
+  color: #4e7f69;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.account-authorized strong {
+  font: 500 32px/1.1 var(--serif);
+}
+
+.account-gate[data-role="princess"] .account-card {
+  background: #fff3f7;
+}
+
+.account-gate[data-role="frog"] .account-card {
+  background: #eef6f2;
+}
+
+@keyframes pf-gate-image-in {
+  from { opacity: 0.6; transform: scale(1.08); }
+  to { opacity: 1; transform: scale(1.015); }
+}
+
+.nav-more {
+  position: relative;
+  align-self: stretch;
+}
+
+.nav-more summary {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  height: 100%;
+  padding: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  list-style: none;
+  cursor: pointer;
+}
+
+.nav-more summary::-webkit-details-marker {
+  display: none;
+}
+
+.nav-more summary i {
+  width: 6px;
+  height: 6px;
+  border-right: 1px solid currentColor;
+  border-bottom: 1px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 180ms ease;
+}
+
+.nav-more[open] summary i {
+  transform: translateY(2px) rotate(225deg);
+}
+
+.nav-more summary:hover,
+.nav-more summary.active,
+.nav-more[open] summary {
+  color: var(--ink);
+}
+
+.nav-more-menu {
+  position: absolute;
+  top: calc(100% - 9px);
+  right: -18px;
+  display: grid;
+  width: 218px;
+  padding: 8px;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  background: rgba(255, 253, 248, 0.98);
+  box-shadow: 0 18px 45px rgba(44, 31, 27, 0.14);
+}
+
+.nav-more-menu a {
+  padding: 13px 12px;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.nav-more-menu a:last-child {
+  border-bottom: 0;
+}
+
+.nav-more-menu a::after {
+  display: none;
+}
+
+.nav-more-menu a:hover,
+.nav-more-menu a.active {
+  color: var(--ink);
+  background: rgba(164, 118, 53, 0.08);
+}
+
+.game-identity-source {
+  position: fixed !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+}
+
+.game-session-intro {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  min-width: 280px;
+}
+
+.game-session-avatar {
+  display: grid;
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border-radius: 50%;
+  color: white;
+  background: #3f715d;
+  font: 700 16px/1 var(--sans);
+  box-shadow: 0 0 0 5px rgba(63, 113, 93, 0.1);
+}
+
+body[data-identity="princess"] .game-session-avatar {
+  background: #bd5d7f;
+  box-shadow: 0 0 0 5px rgba(189, 93, 127, 0.1);
+}
+
+.game-session-intro > div {
+  display: grid;
+  gap: 2px;
+}
+
+.game-session-intro .eyebrow {
+  margin: 0;
+  font-size: 9px;
+}
+
+.game-session-intro strong {
+  font: 500 22px/1 var(--serif);
+}
+
+.game-session-intro small {
+  max-width: 450px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.game-tabs {
+  gap: 0;
+  background: rgba(255, 253, 248, 0.5);
+}
+
+.game-tab {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-width: 190px;
+  padding: 13px 16px;
+  text-align: left;
+}
+
+.game-tab > span {
+  color: var(--gold);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.game-tab > strong {
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-tab.active > span {
+  color: #f0cd86;
+}
+
+@media (max-width: 1180px) {
+  .nav-more {
+    align-self: auto;
+  }
+
+  .nav-more summary {
+    min-height: 72px;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.72);
+    font: 500 28px/1 var(--serif);
+  }
+
+  .nav-more summary.active,
+  .nav-more[open] summary {
+    color: #fff;
+  }
+
+  .nav-more-menu {
+    position: static;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .nav-more-menu a {
+    justify-content: center;
+    padding: 15px 20px;
+    border-color: rgba(255, 253, 248, 0.16);
+    color: rgba(255, 255, 255, 0.72);
+    font: 500 22px/1 var(--serif);
+    text-align: center;
+  }
+}
+
+@media (max-width: 760px) {
+  .account-gate-shell {
+    display: block;
+  }
+
+  .account-gate-story {
+    min-height: 240px;
+    max-height: 32dvh;
+  }
+
+  .account-gate-story img {
+    object-position: center 42%;
+  }
+
+  .account-story-copy {
+    right: 22px;
+    bottom: 22px;
+    left: 22px;
+  }
+
+  .account-story-mark,
+  .account-story-copy > p:not(.eyebrow),
+  .account-members {
+    display: none;
+  }
+
+  .account-story-copy h2 {
+    margin: 8px 0 0;
+    font-size: clamp(42px, 13vw, 60px);
+  }
+
+  .account-card {
+    min-height: calc(100dvh - 240px);
+    padding: 32px 22px 38px;
+  }
+
+  .account-card-top {
+    position: static;
+    margin-bottom: 36px;
+  }
+
+  .account-card h1 {
+    font-size: clamp(52px, 16vw, 72px);
+  }
+
+  .account-card-copy > p:not(.eyebrow) {
+    font-size: 13px;
+  }
+
+  .account-form {
+    margin-top: 28px;
+  }
+
+  .account-form-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .nav-more summary {
+    min-height: 58px;
+    justify-content: flex-start;
+    padding: 0 8px;
+    font-size: 24px;
+  }
+
+  .nav-more-menu a {
+    padding-left: 26px;
+    text-align: left;
+  }
+
+  .game-identity-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .game-session-intro {
+    min-width: 0;
+  }
+
+  .game-session-intro small {
+    max-width: 300px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .account-gate-story img {
+    animation: none;
+  }
+}
+
+.movie-review-space {
+  display: grid;
+  grid-column: 2 / -1;
+  grid-template-columns: minmax(0, 1fr) 190px;
+  gap: 18px;
+  align-items: start;
+  padding: 2px 0 14px;
+}
+
+.movie-review-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid var(--hairline);
+}
+
+.movie-person-review {
+  min-width: 0;
+  padding: 14px 18px 4px 0;
+}
+
+.movie-person-review + .movie-person-review {
+  padding-left: 18px;
+  border-left: 1px solid var(--hairline);
+}
+
+.movie-person-review header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.movie-person-review i {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: #3f715d;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.movie-person-review.princess i {
+  background: #bd5d7f;
+}
+
+.movie-person-review strong {
+  color: var(--ink);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.movie-person-review p {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font: 400 15px/1.55 var(--serif);
+}
+
+.movie-person-review.is-empty p {
+  color: color-mix(in srgb, var(--muted) 62%, transparent);
+  font-family: var(--sans);
+  font-size: 11px;
+  font-style: italic;
+}
+
+.movie-review-editor {
+  border-top: 1px solid var(--hairline);
+}
+
+.movie-review-editor summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 49px;
+  color: var(--burgundy);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  list-style: none;
+  cursor: pointer;
+}
+
+.movie-review-editor summary::-webkit-details-marker {
+  display: none;
+}
+
+.movie-review-editor summary span {
+  font-size: 18px;
+  font-weight: 400;
+  transition: transform 180ms ease;
+}
+
+.movie-review-editor[open] summary span {
+  transform: rotate(45deg);
+}
+
+.movie-review-editor > div {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 12px;
+}
+
+.movie-review-editor textarea {
+  min-height: 92px;
+  padding: 11px;
+  resize: vertical;
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  color: var(--ink);
+  background: var(--paper-light);
+  font: 400 13px/1.5 var(--sans);
+}
+
+.movie-review-editor .btn {
+  min-height: 38px;
+  padding: 8px 12px;
+  font-size: 10px;
+}
+
+@media (max-width: 900px) {
+  .movie-review-space {
+    grid-column: 1 / -1;
+    grid-template-columns: 1fr;
+  }
+
+  .movie-review-editor {
+    max-width: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .movie-review-pair {
+    grid-template-columns: 1fr;
+  }
+
+  .movie-person-review + .movie-person-review {
+    padding-left: 0;
+    border-top: 1px solid var(--hairline);
+    border-left: 0;
+  }
+}

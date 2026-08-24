@@ -131,13 +131,21 @@
 
   function initializeLobby() {
     const identitySelect = document.getElementById("gameIdentity");
-    const updateAccountName = () => {
+    const updateSessionIdentity = () => {
       const me = role();
-      document.getElementById("accountPlayerName").textContent = validRole(me) ? roleName(me) : "Choose a player";
+      const other = otherRole(me);
+      const avatar = document.getElementById("gameSessionAvatar");
+      const greeting = document.getElementById("gameSessionGreeting");
+      const detail = document.getElementById("gameSessionDetail");
+      if (avatar) avatar.textContent = validRole(me) ? roleName(me).charAt(0) : "PF";
+      if (greeting) greeting.textContent = validRole(me) ? `${roleName(me)}'s match room` : "Private match room";
+      if (detail) detail.textContent = validRole(me)
+        ? `${roleName(other)} sees the same invitations, rounds, reactions, and scores.`
+        : "Sign in and your player identity will be selected automatically.";
     };
-    updateAccountName();
+    updateSessionIdentity();
     identitySelect?.addEventListener("change", () => {
-      updateAccountName();
+      updateSessionIdentity();
       refreshAll();
     });
     document.getElementById("sendGameInvite").addEventListener("click", async () => {

@@ -1,6 +1,7 @@
 (function () {
   const config = window.CORNER_CONFIG || {};
   const isLocalPreview = ["localhost", "127.0.0.1", ""].includes(location.hostname) || location.protocol === "file:";
+  const forceLocalPreview = isLocalPreview && new URLSearchParams(location.search).get("preview") === "1";
   const canConnect = Boolean(config.supabaseUrl && config.supabaseAnonKey && window.supabase);
   const client = canConnect
     ? (window.CORNER_SUPABASE_CLIENT || window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey))
@@ -52,29 +53,54 @@
     const gate = document.createElement("div");
     gate.className = "account-gate";
     gate.innerHTML = `
-      <section class="account-card" aria-labelledby="accountGateTitle">
-        <div class="account-mark" aria-hidden="true">PF</div>
-        <p class="eyebrow">Our private corner</p>
-        <h1 id="accountGateTitle">Welcome back.</h1>
-        <p>Sign in with your own Frog or Princess account.</p>
-        <form class="account-form">
-          <label>Email
-            <input name="email" type="email" autocomplete="username" required placeholder="you@example.com">
-          </label>
-          <label>Password
-            <input name="password" type="password" autocomplete="current-password" required placeholder="Your password">
-          </label>
-          <button class="btn primary" type="submit">Sign in</button>
-          <button class="text-action account-reset" type="button">Send password reset email</button>
-          <p class="account-error" aria-live="polite"></p>
-        </form>
-        <div class="account-linked" hidden>
-          <p>This login works, but it has not been assigned to Frog or Princess.</p>
-          <button class="btn account-sign-out" type="button">Sign out</button>
-        </div>
-      </section>
+      <div class="account-gate-shell">
+        <aside class="account-gate-story" aria-hidden="true">
+          <picture><source media="(max-width: 760px)" srcset="images/optimized/june21-flowers-640.webp"><img src="images/optimized/june21-flowers-1200.webp" alt=""></picture>
+          <div class="account-gate-shade"></div>
+          <div class="account-story-copy">
+            <div class="account-story-mark"><span>P</span><i></i><span>F</span></div>
+            <p class="eyebrow">Our private little corner</p>
+            <h2>One story.<br>Two private seats.</h2>
+            <p>Letters, memories, games, plans, and every little thing we keep between us.</p>
+            <div class="account-members"><span><i>F</i> Frog</span><span><i>P</i> Princess</span></div>
+          </div>
+        </aside>
+        <section class="account-card" aria-labelledby="accountGateTitle">
+          <div class="account-card-top"><span>Princess + Frog</span><span class="account-private-status"><i></i> Private access</span></div>
+          <div class="account-card-copy">
+            <p class="eyebrow">Welcome back</p>
+            <h1 id="accountGateTitle">Come back<br>to <em>us.</em></h1>
+            <p>Use your own account. Your identity, theme, scores, votes, ratings, and private answers will follow you automatically.</p>
+          </div>
+          <form class="account-form">
+            <label><span>Email address</span>
+              <input name="email" type="email" autocomplete="username" required placeholder="Enter your email">
+            </label>
+            <label><span>Password</span>
+              <span class="account-password-wrap"><input name="password" type="password" autocomplete="current-password" required placeholder="Enter your password"><button class="account-password-toggle" type="button" aria-label="Show password">Show</button></span>
+            </label>
+            <button class="btn primary account-submit" type="submit"><span>Open our corner</span><i aria-hidden="true">&rarr;</i></button>
+            <div class="account-form-footer"><span>Only Frog and Princess can enter.</span><button class="account-reset" type="button">Forgot password?</button></div>
+            <p class="account-error" aria-live="polite"></p>
+          </form>
+          <div class="account-linked" hidden>
+            <p>This login works, but it has not been assigned to Frog or Princess.</p>
+            <button class="btn account-sign-out" type="button">Sign out</button>
+          </div>
+          <div class="account-authorized" aria-live="polite" hidden><span>Identity confirmed</span><strong>Opening your corner...</strong></div>
+        </section>
+      </div>
     `;
     document.body.appendChild(gate);
+    const password = gate.querySelector('input[name="password"]');
+    const toggle = gate.querySelector(".account-password-toggle");
+    toggle.addEventListener("click", () => {
+      const showing = password.type === "text";
+      password.type = showing ? "password" : "text";
+      toggle.textContent = showing ? "Show" : "Hide";
+      toggle.setAttribute("aria-label", showing ? "Show password" : "Hide password");
+      password.focus();
+    });
     return gate;
   }
 
@@ -85,10 +111,19 @@
     const linkedEl = gate.querySelector(".account-linked");
     const submit = form.querySelector("button[type='submit']");
 
-    async function finish(user) {
+    async function finish(user, celebrate = false) {
       try {
         const profile = await loadProfile(user);
         applyIdentity(profile, user);
+        if (celebrate) {
+          gate.dataset.role = profile.role;
+          gate.classList.add("is-authorized");
+          form.hidden = true;
+          const authorized = gate.querySelector(".account-authorized");
+          authorized.hidden = false;
+          authorized.querySelector("strong").textContent = `Welcome, ${profile.display_name || roleLabel(profile.role)}. Opening your corner...`;
+          await new Promise((resolve) => window.setTimeout(resolve, 680));
+        }
         gate.remove();
         return true;
       } catch (error) {
@@ -106,19 +141,19 @@
         event.preventDefault();
         errorEl.textContent = "";
         submit.disabled = true;
-        submit.textContent = "Signing in...";
+        submit.querySelector("span").textContent = "Checking your account...";
         const fields = new FormData(form);
         const { data, error } = await client.auth.signInWithPassword({
           email: String(fields.get("email") || "").trim(),
           password: String(fields.get("password") || "")
         });
         submit.disabled = false;
-        submit.textContent = "Sign in";
+        submit.querySelector("span").textContent = "Open our corner";
         if (error) {
           errorEl.textContent = error.message;
           return;
         }
-        if (await finish(data.user)) resolve(current);
+        if (await finish(data.user, true)) resolve(current);
       });
 
       gate.querySelector(".account-reset").addEventListener("click", async () => {
@@ -144,7 +179,7 @@
   async function init() {
     if (initPromise) return initPromise;
     initPromise = (async () => {
-      if (isLocalPreview && config.localAccountPreview !== true) return current;
+      if (forceLocalPreview || (isLocalPreview && config.localAccountPreview !== true)) return current;
       if (config.authEnabled === false) return current;
       if (!client) {
         current = { ...current, mode: "unavailable" };
