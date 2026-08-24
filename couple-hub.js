@@ -59,8 +59,8 @@
     movies: {
       title: "Movie Shelf",
       summary: "Your shared watchlist, collection rankings, ratings, and movie-night decision maker.",
-      steps: ["Add films individually or work through the starter collections.", "Tick Watched after movie night and add a rating.", "Use Pick tonight's movie when neither of you wants to choose."],
-      shared: "Ticks, ratings, rankings, and notes sync instantly."
+      steps: ["Add films individually or work through the starter collections.", "Tick Watched after movie night, then rate it from your own account.", "Compare Frog and Princess scores or use Pick tonight's movie when neither of you wants to choose."],
+      shared: "Both personal ratings stay visible, and every tick, ranking, and note syncs instantly."
     },
     messages: {
       title: "Our Chat",
@@ -143,7 +143,7 @@
     rank: rank || null,
     pickedBy: "together",
     watched: false,
-    rating: 0,
+    ratings: { frog: 0, princess: 0 },
     note: "",
     watchedAt: ""
   }));
@@ -246,6 +246,24 @@
       if (!ids.has(seed.id)) items.push({ ...seed });
     });
     return items;
+  }
+
+  function normalizeMovieItem(item) {
+    const { rating, ...rest } = item || {};
+    const legacyRating = Math.max(0, Math.min(5, Number(rating || 0)));
+    const savedRatings = rest.ratings && typeof rest.ratings === "object" ? rest.ratings : {};
+    return {
+      ...rest,
+      ratings: {
+        frog: Math.max(0, Math.min(5, Number(savedRatings.frog ?? legacyRating ?? 0))),
+        princess: Math.max(0, Math.min(5, Number(savedRatings.princess ?? legacyRating ?? 0)))
+      }
+    };
+  }
+
+  function movieRatingStars(value) {
+    const score = Math.max(0, Math.min(5, Number(value || 0)));
+    return score ? `${"★".repeat(score)}${"☆".repeat(5 - score)}` : "Not rated";
   }
 
   function initPageGuide() {
@@ -489,10 +507,12 @@
     let editing = false;
     const savedMovies = shared().get(key, null);
     const shouldSeed = !shared().get(seedMarker, false);
+    const hadLegacyRatings = Array.isArray(savedMovies) && savedMovies.some((item) => Object.prototype.hasOwnProperty.call(item, "rating"));
     let items = Array.isArray(savedMovies)
       ? (shouldSeed ? mergeSeeds(savedMovies, movieSeeds) : savedMovies.map((item) => ({ ...item })))
       : movieSeeds.map((item) => ({ ...item }));
-    if (!Array.isArray(savedMovies) || shouldSeed) {
+    items = items.map(normalizeMovieItem);
+    if (!Array.isArray(savedMovies) || shouldSeed || hadLegacyRatings) {
       shared().set(key, items);
       shared().set(seedMarker, true);
     }
@@ -513,9 +533,9 @@
 
     function render() {
       const stored = shared().get(key, items);
-      items = Array.isArray(stored) ? stored.map((item) => ({ ...item })) : items;
+      items = Array.isArray(stored) ? stored.map(normalizeMovieItem) : items;
       const watched = items.filter((item) => item.watched);
-      const ratings = watched.map((item) => Number(item.rating || 0)).filter(Boolean);
+      const ratings = items.flatMap((item) => [Number(item.ratings?.frog || 0), Number(item.ratings?.princess || 0)]).filter(Boolean);
       document.getElementById("movieTotal").textContent = String(items.length);
       document.getElementById("movieWatched").textContent = String(watched.length);
       document.getElementById("movieAverage").textContent = ratings.length ? (ratings.reduce((sum, value) => sum + value, 0) / ratings.length).toFixed(1) : "-";
@@ -537,7 +557,15 @@
                 <small>Picked by ${item.pickedBy === "together" ? "both of you" : roleName(item.pickedBy)}${item.watchedAt ? ` &middot; Watched ${escapeHtml(formatDate(item.watchedAt))}` : ""}</small>
                 ${item.note ? `<p>${escapeHtml(item.note)}</p>` : ""}
               </div>
-              <label class="movie-rating">Rating<select aria-label="Rating for ${escapeHtml(item.title)}"><option value="0">Not rated</option>${[1, 2, 3, 4, 5].map((value) => `<option value="${value}" ${Number(item.rating) === value ? "selected" : ""}>${value} / 5</option>`).join("")}</select></label>
+              <div class="movie-rating-panel" aria-label="Frog and Princess ratings for ${escapeHtml(item.title)}">
+                <div class="movie-rating-pair">
+                  ${["frog", "princess"].map((player) => {
+                    const score = Number(item.ratings?.[player] || 0);
+                    return `<span class="movie-person-rating ${player}"><i aria-hidden="true">${player === "frog" ? "F" : "P"}</i><span><small>${roleName(player)}</small><strong aria-label="${score ? `${score} out of 5` : "Not rated"}">${movieRatingStars(score)}</strong></span><b>${score ? `${score}/5` : "-"}</b></span>`;
+                  }).join("")}
+                </div>
+                <label class="movie-rating movie-my-rating"><span>Your rating as ${roleName(role())}</span><select aria-label="Your rating as ${roleName(role())} for ${escapeHtml(item.title)}"><option value="0">Not rated</option>${[1, 2, 3, 4, 5].map((value) => `<option value="${value}" ${Number(item.ratings?.[role()]) === value ? "selected" : ""}>${value} / 5</option>`).join("")}</select></label>
+              </div>
               <div class="movie-edit-fields">
                 <input class="movie-collection-input" type="text" maxlength="80" value="${escapeHtml(item.collection || "")}" aria-label="Collection">
                 <input class="movie-rank-input" type="number" min="1" max="99" value="${item.rank || ""}" aria-label="Collection rank" placeholder="Rank">
@@ -553,8 +581,9 @@
           await updateItem(id, { watched: event.target.checked, watchedAt: event.target.checked ? new Date().toISOString() : "" });
           render();
         });
-        row.querySelector(".movie-rating select").addEventListener("change", async (event) => {
-          await updateItem(id, { rating: Number(event.target.value) });
+        row.querySelector(".movie-my-rating select").addEventListener("change", async (event) => {
+          const item = items.find((entry) => entry.id === id);
+          await updateItem(id, { ratings: { ...item.ratings, [role()]: Number(event.target.value) } });
           render();
         });
         const saveEdit = async () => {
@@ -589,7 +618,7 @@
         note: document.getElementById("movieNote").value.trim(),
         rank: null,
         watched: false,
-        rating: 0,
+        ratings: { frog: 0, princess: 0 },
         watchedAt: ""
       });
       await shared().set(key, items);
