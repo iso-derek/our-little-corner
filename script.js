@@ -14,6 +14,7 @@
   const controllers = {};
   let remoteReady = false;
   let remotePullPromise = null;
+  const pendingRemoteWrites = new Map();
   let syncStatusEl = null;
   let lightboxItems = [];
   let lightboxIndex = 0;
@@ -87,11 +88,12 @@
         const remoteKeys = new Set();
         data.forEach((row) => {
           remoteKeys.add(row.key);
-          remoteCache[row.key] = row.value;
+          const pending = pendingRemoteWrites.get(row.key);
+          remoteCache[row.key] = pending ? pending.value : row.value;
         });
         if (remoteReady) {
           Object.keys(remoteCache).forEach((key) => {
-            if (!remoteKeys.has(key)) delete remoteCache[key];
+            if (!remoteKeys.has(key) && !pendingRemoteWrites.has(key)) delete remoteCache[key];
           });
         }
         remoteReady = true;
@@ -113,7 +115,9 @@
     },
     async set(key, value) {
       localSet(key, value);
-      if (!supabaseClient) return;
+      if (!supabaseClient) return true;
+      const writeId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      pendingRemoteWrites.set(key, { id: writeId, value });
       remoteCache[key] = value;
       const { error } = await supabaseClient
         .from("corner_kv")
@@ -123,13 +127,20 @@
           value,
           updated_at: new Date().toISOString()
         });
+      const pending = pendingRemoteWrites.get(key);
+      if (pending?.id === writeId) {
+        pendingRemoteWrites.delete(key);
+        if (!error) remoteCache[key] = value;
+      }
       if (error) {
         console.warn("Supabase save failed.", error);
         updateSyncStatus("offline");
         toast("Saved on this device");
+        return false;
       } else {
         updateSyncStatus("online");
         window.CornerNotifications?.fromSharedChange?.(key, value);
+        return true;
       }
     },
     async uploadPhoto(file, memoryId) {
@@ -1071,6 +1082,7 @@
     let scores = { frog: 0, princess: 0, lastScoredRound: null, ...shared.get("pf_game_scores", {}) };
     let secrets = { frog: null, princess: null };
     let playerStates = { frog: { ...defaultPlayerState }, princess: { ...defaultPlayerState } };
+    let startingRound = false;
     const savedPlayer = sessionStorage.getItem("pf_game_player");
     roleEl.value = ["frog", "princess"].includes(savedPlayer) ? savedPlayer : "";
 
@@ -1158,10 +1170,11 @@
       else guessHelp.textContent = `Guess ${playerLabels[opponent]}'s number from 1 to ${round.range}.`;
 
       const resetButton = document.getElementById("resetGame");
-      if (winner) resetButton.textContent = "Play again";
+      if (startingRound) resetButton.textContent = winner ? "Preparing rematch..." : "Starting duel...";
+      else if (winner) resetButton.textContent = "Play again";
       else if (!round.id) resetButton.textContent = "Start duel";
       else resetButton.textContent = me === "frog" ? "Restart round" : "Round in progress";
-      resetButton.disabled = !hasIdentity || Boolean(round.id && !winner && me !== "frog");
+      resetButton.disabled = startingRound || !hasIdentity || Boolean(round.id && !winner && me !== "frog");
       resetButton.classList.toggle("primary", Boolean(hasIdentity && (!round.id || winner)));
       document.getElementById("setSecret").disabled = !hasIdentity || Boolean(mySecret) || Boolean(winner);
       document.getElementById("checkGuess").disabled = !hasIdentity || !ready || Boolean(winner);
@@ -1217,30 +1230,42 @@
     });
 
     document.getElementById("resetGame").addEventListener("click", async () => {
-      if (!isGamePlayer(roleEl.value)) return;
-      await controllers.gameHub?.heartbeat?.();
-      await shared.pull(true);
-      refreshFromStore();
-      if (round.id && !round.winner && roleEl.value !== "frog") {
-        toast("This round is still in progress");
-        return;
-      }
-      if (round.id && !round.winner && !window.confirm("Restart this duel? Both locked numbers will be cleared.")) {
+      if (!isGamePlayer(roleEl.value) || startingRound) return;
+      startingRound = true;
+      renderRound();
+      try {
+        await controllers.gameHub?.heartbeat?.();
+        await shared.pull(true);
+        refreshFromStore();
+        const finishedBy = round.winner || winnerFromStates();
+        if (round.id && !finishedBy && roleEl.value !== "frog") {
+          toast("This round is still in progress");
+          return;
+        }
+        if (round.id && !finishedBy && !window.confirm("Restart this duel? Both locked numbers will be cleared.")) {
+          return;
+        }
+        const range = Number(rangeEl.value);
+        const nextRound = {
+          ...defaultRound,
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          range,
+          startedAt: new Date().toISOString()
+        };
+        const saved = await shared.set(roundKey, nextRound);
+        if (!saved) {
+          resultEl.textContent = "The new duel could not reach the shared game. Check the connection and tap Play again.";
+          return;
+        }
+        round = nextRound;
+        secretEl.value = "";
+        guessEl.value = "";
+        loadRoundRecords();
+        toast("Fresh duel ready - choose your numbers 💕");
+      } finally {
+        startingRound = false;
         renderRound();
-        return;
       }
-      const range = Number(rangeEl.value);
-      round = {
-        ...defaultRound,
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        range,
-        startedAt: new Date().toISOString()
-      };
-      await shared.set(roundKey, round);
-      secretEl.value = "";
-      guessEl.value = "";
-      refreshFromStore();
-      toast("New duel ready 💕");
     });
 
     document.getElementById("setSecret").addEventListener("click", async () => {
@@ -1355,6 +1380,7 @@
       frog: { ...defaultPlayerState },
       princess: { ...defaultPlayerState }
     };
+    let startingRound = false;
 
     function otherPlayer(player) {
       return player === "frog" ? "princess" : "frog";
@@ -1479,10 +1505,11 @@
       else guessHelp.textContent = `Guess ${playerLabels[opponent]}'s ${round.length}-letter word.`;
 
       const resetButton = document.getElementById("resetWordGame");
-      if (winner) resetButton.textContent = "Play again";
+      if (startingRound) resetButton.textContent = winner ? "Preparing rematch..." : "Starting duel...";
+      else if (winner) resetButton.textContent = "Play again";
       else if (!round.id) resetButton.textContent = "Start word duel";
       else resetButton.textContent = me === "frog" ? "Restart round" : "Round in progress";
-      resetButton.disabled = !hasIdentity || Boolean(round.id && !winner && me !== "frog");
+      resetButton.disabled = startingRound || !hasIdentity || Boolean(round.id && !winner && me !== "frog");
       resetButton.classList.toggle("primary", Boolean(hasIdentity && (!round.id || winner)));
       document.getElementById("setSecretWord").disabled = !hasIdentity || Boolean(mySecret) || Boolean(winner);
       document.getElementById("checkWordGuess").disabled = !hasIdentity || Boolean(winner);
@@ -1548,29 +1575,41 @@
     });
 
     document.getElementById("resetWordGame").addEventListener("click", async () => {
-      if (!isGamePlayer(roleEl.value)) return;
-      await controllers.gameHub?.heartbeat?.();
-      await shared.pull(true);
-      refreshFromStore();
-      if (round.id && !round.winner && roleEl.value !== "frog") {
-        toast("This round is still in progress");
-        return;
-      }
-      if (round.id && !round.winner && !window.confirm("Restart this word duel? Both secret words and all guesses will be cleared.")) {
+      if (!isGamePlayer(roleEl.value) || startingRound) return;
+      startingRound = true;
+      renderRound();
+      try {
+        await controllers.gameHub?.heartbeat?.();
+        await shared.pull(true);
+        refreshFromStore();
+        const finishedBy = round.winner || winnerFromStates();
+        if (round.id && !finishedBy && roleEl.value !== "frog") {
+          toast("This round is still in progress");
+          return;
+        }
+        if (round.id && !finishedBy && !window.confirm("Restart this word duel? Both secret words and all guesses will be cleared.")) {
+          return;
+        }
+        const nextRound = {
+          ...defaultRound,
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          length: Number(lengthEl.value),
+          startedAt: new Date().toISOString()
+        };
+        const saved = await shared.set("pf_word_round", nextRound);
+        if (!saved) {
+          resultEl.textContent = "The new word duel could not reach the shared game. Check the connection and tap Play again.";
+          return;
+        }
+        round = nextRound;
+        secretEl.value = "";
+        guessEl.value = "";
+        loadRoundRecords();
+        toast("Fresh word duel ready - choose your words 💕");
+      } finally {
+        startingRound = false;
         renderRound();
-        return;
       }
-      round = {
-        ...defaultRound,
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        length: Number(lengthEl.value),
-        startedAt: new Date().toISOString()
-      };
-      await shared.set("pf_word_round", round);
-      secretEl.value = "";
-      guessEl.value = "";
-      refreshFromStore();
-      toast("New word duel ready 💕");
     });
 
     document.getElementById("setSecretWord").addEventListener("click", async () => {
