@@ -862,15 +862,26 @@
     }
 
     async function syncGameState(showConfirmation = false) {
-      if (syncButton) syncButton.disabled = true;
-      await heartbeat();
-      const connected = await shared.pull(true);
-      controllers.numberGame?.refresh();
-      controllers.wordGame?.refresh();
-      controllers.sameGame?.refresh();
-      window.CornerGames?.refresh?.();
-      if (syncButton) syncButton.disabled = false;
-      if (showConfirmation) toast(connected ? "Game refreshed" : "Could not refresh shared game");
+      if (syncButton?.disabled) return;
+      const originalLabel = syncButton?.innerHTML;
+      if (syncButton) {
+        syncButton.disabled = true;
+        syncButton.innerHTML = '<span aria-hidden="true">↻</span> Refreshing...';
+      }
+      try {
+        await heartbeat();
+        const connected = await shared.pull(true);
+        controllers.numberGame?.refresh();
+        controllers.wordGame?.refresh();
+        controllers.sameGame?.refresh();
+        window.CornerGames?.refresh?.();
+        if (showConfirmation) toast(connected ? "All games refreshed" : "Could not refresh shared games");
+      } finally {
+        if (syncButton) {
+          syncButton.disabled = false;
+          syncButton.innerHTML = originalLabel;
+        }
+      }
     }
 
     tabs.forEach((tab, index) => {
@@ -942,6 +953,7 @@
     let stats = { ...defaultStats, ...shared.get("pf_same_stats", defaultStats) };
     let frogAnswer = shared.get("pf_same_answer_frog", null);
     let princessAnswer = shared.get("pf_same_answer_princess", null);
+    let startingRound = false;
 
     function answerFor(player) {
       const answer = player === "frog" ? frogAnswer : princessAnswer;
@@ -983,7 +995,15 @@
       optionB.textContent = question ? question[2] : "Option B";
       optionA.disabled = !hasIdentity || !question || Boolean(mine);
       optionB.disabled = !hasIdentity || !question || Boolean(mine);
-      document.getElementById("nextSameQuestion").disabled = !hasIdentity;
+      const nextButton = document.getElementById("nextSameQuestion");
+      nextButton.textContent = startingRound
+        ? "Preparing question..."
+        : !question
+          ? "Start question"
+          : bothAnswered
+            ? "Next question"
+            : "Restart question";
+      nextButton.disabled = startingRound || !hasIdentity;
       optionA.classList.toggle("selected", mine === "A");
       optionB.classList.toggle("selected", mine === "B");
 
@@ -1027,24 +1047,41 @@
     optionA.addEventListener("click", () => choose("A"));
     optionB.addEventListener("click", () => choose("B"));
     document.getElementById("nextSameQuestion").addEventListener("click", async () => {
-      await controllers.gameHub?.heartbeat?.();
-      await shared.pull(true);
-      refreshFromStore();
-      if (!isGamePlayer(identity.value)) return;
-      let nextIndex = Math.floor(Math.random() * questions.length);
-      if (questions.length > 1 && nextIndex === Number(round.questionIndex)) {
-        nextIndex = (nextIndex + 1) % questions.length;
-      }
-      round = {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        questionIndex: nextIndex,
-        startedAt: new Date().toISOString()
-      };
-      await shared.set("pf_same_round", round);
+      if (startingRound || !isGamePlayer(identity.value)) return;
+      startingRound = true;
       render();
-      toast("New question ready 💕");
+      try {
+        await controllers.gameHub?.heartbeat?.();
+        await shared.pull(true);
+        refreshFromStore();
+        const activeQuestion = questions[Number(round.questionIndex)] || null;
+        const complete = Boolean(answerFor("frog") && answerFor("princess"));
+        if (activeQuestion && !complete && !window.confirm("Start a different question? Both current choices will be cleared.")) return;
+        let nextIndex = Math.floor(Math.random() * questions.length);
+        if (questions.length > 1 && nextIndex === Number(round.questionIndex)) {
+          nextIndex = (nextIndex + 1) % questions.length;
+        }
+        const nextRound = {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          questionIndex: nextIndex,
+          startedAt: new Date().toISOString(),
+          startedBy: identity.value
+        };
+        const saved = await shared.set("pf_same_round", nextRound);
+        if (!saved) {
+          toast("Could not sync the new question");
+          return;
+        }
+        round = nextRound;
+        toast("New question ready 💕");
+      } finally {
+        startingRound = false;
+        render();
+      }
     });
     document.getElementById("resetSameGame").addEventListener("click", async () => {
+      await shared.pull(true);
+      refreshFromStore();
       stats = { ...defaultStats };
       await shared.set("pf_same_stats", stats);
       render();
@@ -1067,6 +1104,7 @@
     const roundStatus = document.getElementById("roundStatus");
     const hostStatus = document.getElementById("hostStatus");
     const guesserStatus = document.getElementById("guesserStatus");
+    const historyEl = document.getElementById("numberHistory");
     if (!rangeEl || !roleEl) return;
     if (controllers.numberGame) {
       controllers.numberGame.refresh();
@@ -1076,8 +1114,8 @@
     const players = ["frog", "princess"];
     const playerLabels = { frog: "Frog 🐸", princess: "Princess 👑" };
     const roundKey = "pf_number_duel_round";
-    const defaultRound = { id: null, range: 100, startedAt: null, winner: null, winnerAt: null };
-    const defaultPlayerState = { roundId: null, attempts: 0, lastGuess: null, clue: "", correctAt: null };
+    const defaultRound = { id: null, range: 100, starter: null, turn: null, startedAt: null, winner: null, winnerAt: null };
+    const defaultPlayerState = { roundId: null, attempts: 0, guesses: [], lastGuess: null, clue: "", correctAt: null };
     let round = { ...defaultRound, ...shared.get(roundKey, defaultRound) };
     let scores = { frog: 0, princess: 0, lastScoredRound: null, ...shared.get("pf_game_scores", {}) };
     let secrets = { frog: null, princess: null };
@@ -1120,9 +1158,38 @@
         .sort((a, b) => Date.parse(playerStates[a].correctAt) - Date.parse(playerStates[b].correctAt))[0] || null;
     }
 
+    function currentTurn() {
+      if (isGamePlayer(round.turn)) return round.turn;
+      if (isGamePlayer(round.starter)) return round.starter;
+      return "frog";
+    }
+
+    function allGuesses() {
+      return players
+        .flatMap((player) => (Array.isArray(playerStates[player].guesses) ? playerStates[player].guesses : [])
+          .map((guess) => ({ ...guess, player })))
+        .sort((a, b) => Date.parse(b.guessedAt) - Date.parse(a.guessedAt));
+    }
+
     function renderScores() {
       document.getElementById("frogScore").textContent = scores.frog || 0;
       document.getElementById("princessScore").textContent = scores.princess || 0;
+    }
+
+    function renderHistory() {
+      const guesses = allGuesses();
+      if (!historyEl) return;
+      if (!guesses.length) {
+        historyEl.innerHTML = '<p class="game-secret">Every guess and clue will appear here for both players.</p>';
+        return;
+      }
+      historyEl.innerHTML = guesses.map((item) => `
+        <div class="word-history-row number-history-row">
+          <span class="word-player">${playerLabels[item.player]}</span>
+          <strong>${escapeHtml(item.guess)}</strong>
+          <span class="common-result"><b>${escapeHtml(item.clue)}</b></span>
+        </div>
+      `).join("");
     }
 
     function renderRound() {
@@ -1131,8 +1198,9 @@
       const opponent = hasIdentity ? otherPlayer(me) : null;
       const ready = bothReady();
       const winner = round.winner || winnerFromStates();
+      const turn = currentTurn();
       const mySecret = hasIdentity ? secrets[me] : null;
-      const myState = hasIdentity ? playerStates[me] : defaultPlayerState;
+      const latestGuess = allGuesses()[0] || null;
 
       rangeEl.value = String(round.range || 100);
       secretEl.max = rangeEl.value;
@@ -1143,7 +1211,7 @@
         const online = isOnline(player);
         if (!round.id) return online ? "Ready" : "Away";
         if (winner) return winner === player ? "Won 🎉" : "Round over";
-        if (ready) return `${playerStates[player].attempts || 0} guesses${online ? "" : " · away"}`;
+        if (ready) return `${player === turn ? "Up next" : "Waiting"} · ${playerStates[player].attempts || 0} guesses${online ? "" : " · away"}`;
         if (secrets[player]) return `Number locked${online ? "" : " · away"}`;
         return online ? "Choosing" : "Away";
       }
@@ -1155,8 +1223,11 @@
         : winner
           ? `${playerLabels[winner]} won`
           : ready
-            ? `Live: 1 to ${round.range}`
+            ? `Live: ${playerLabels[turn]}'s turn`
             : "Locking numbers";
+
+      hostStatus.closest(".game-status-card")?.classList.toggle("current-turn", Boolean(ready && !winner && turn === "frog"));
+      guesserStatus.closest(".game-status-card")?.classList.toggle("current-turn", Boolean(ready && !winner && turn === "princess"));
 
       if (!hasIdentity) secretStatus.textContent = "Choose Frog or Princess before joining the duel.";
       else if (!round.id) secretStatus.textContent = "Start the duel, then lock your secret number.";
@@ -1164,24 +1235,27 @@
       else if (mySecret) secretStatus.textContent = "Your number is locked. It stays hidden from your opponent.";
       else secretStatus.textContent = `Choose a secret number from 1 to ${round.range}, then lock it.`;
 
-      if (!ready) guessHelp.textContent = "Both players must lock their numbers before guessing.";
+      if (!ready) guessHelp.textContent = round.id
+        ? `Both players must lock their numbers. ${playerLabels[turn]} guesses first.`
+        : "Both players must lock their numbers before guessing.";
       else if (winner) guessHelp.textContent = `${playerLabels[winner]} won this duel.`;
       else if (!hasIdentity) guessHelp.textContent = "Choose your player before guessing.";
-      else guessHelp.textContent = `Guess ${playerLabels[opponent]}'s number from 1 to ${round.range}.`;
+      else if (me !== turn) guessHelp.textContent = `Waiting for ${playerLabels[turn]} to guess.`;
+      else guessHelp.textContent = `Your turn: guess ${playerLabels[opponent]}'s number from 1 to ${round.range}.`;
 
       const resetButton = document.getElementById("resetGame");
       if (startingRound) resetButton.textContent = winner ? "Preparing rematch..." : "Starting duel...";
       else if (winner) resetButton.textContent = "Play again";
       else if (!round.id) resetButton.textContent = "Start duel";
-      else resetButton.textContent = me === "frog" ? "Restart round" : "Round in progress";
-      resetButton.disabled = startingRound || !hasIdentity || Boolean(round.id && !winner && me !== "frog");
+      else resetButton.textContent = "Restart round";
+      resetButton.disabled = startingRound || !hasIdentity;
       resetButton.classList.toggle("primary", Boolean(hasIdentity && (!round.id || winner)));
       document.getElementById("setSecret").disabled = !hasIdentity || Boolean(mySecret) || Boolean(winner);
-      document.getElementById("checkGuess").disabled = !hasIdentity || !ready || Boolean(winner);
+      document.getElementById("checkGuess").disabled = !hasIdentity || !ready || Boolean(winner) || me !== turn;
       rangeEl.disabled = Boolean(round.id && !winner);
       // Let either player prepare a number while a newly-started round is still syncing.
       secretEl.disabled = !hasIdentity || Boolean(mySecret) || Boolean(winner);
-      guessEl.disabled = !hasIdentity || !ready || Boolean(winner);
+      guessEl.disabled = !hasIdentity || !ready || Boolean(winner) || me !== turn;
 
       if (!hasIdentity) {
         resultEl.textContent = "Choose Frog or Princess to join the game.";
@@ -1189,15 +1263,17 @@
         resultEl.textContent = winner === me
           ? `You guessed ${playerLabels[opponent]}'s number first. Tap Play again for a fresh duel 🎉`
           : `${playerLabels[winner]} guessed your number first. Tap Play again for a fresh duel.`;
-      } else if (myState.clue) {
-        resultEl.textContent = myState.clue;
       } else if (!round.id) {
         resultEl.textContent = "Either player can start a new duel when you are ready.";
       } else if (ready) {
-        resultEl.textContent = "The race is live. Make your first guess.";
+        const turnMessage = me === turn ? "Your turn - take a guess." : `${playerLabels[turn]} is thinking.`;
+        resultEl.textContent = latestGuess
+          ? `${playerLabels[latestGuess.player]} guessed ${latestGuess.guess}: ${latestGuess.clue}. ${turnMessage}`
+          : `${playerLabels[turn]} goes first. ${turnMessage}`;
       } else {
         resultEl.textContent = "Waiting for both secret numbers to be locked.";
       }
+      renderHistory();
     }
 
     function refreshFromStore() {
@@ -1229,6 +1305,17 @@
       guessEl.max = rangeEl.value;
     });
 
+    secretEl.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" || document.getElementById("setSecret").disabled) return;
+      event.preventDefault();
+      document.getElementById("setSecret").click();
+    });
+    guessEl.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" || document.getElementById("checkGuess").disabled) return;
+      event.preventDefault();
+      document.getElementById("checkGuess").click();
+    });
+
     document.getElementById("resetGame").addEventListener("click", async () => {
       if (!isGamePlayer(roleEl.value) || startingRound) return;
       startingRound = true;
@@ -1238,18 +1325,18 @@
         await shared.pull(true);
         refreshFromStore();
         const finishedBy = round.winner || winnerFromStates();
-        if (round.id && !finishedBy && roleEl.value !== "frog") {
-          toast("This round is still in progress");
-          return;
-        }
         if (round.id && !finishedBy && !window.confirm("Restart this duel? Both locked numbers will be cleared.")) {
           return;
         }
         const range = Number(rangeEl.value);
+        const previousStarter = isGamePlayer(round.starter) ? round.starter : null;
+        const starter = previousStarter ? otherPlayer(previousStarter) : roleEl.value;
         const nextRound = {
           ...defaultRound,
           id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           range,
+          starter,
+          turn: starter,
           startedAt: new Date().toISOString()
         };
         const saved = await shared.set(roundKey, nextRound);
@@ -1297,6 +1384,11 @@
       const opponent = otherPlayer(me);
       const winner = round.winner || winnerFromStates();
       if (winner) return;
+      const turn = currentTurn();
+      if (me !== turn) {
+        resultEl.textContent = `It is ${playerLabels[turn]}'s turn.`;
+        return;
+      }
       const guess = Number(guessEl.value);
       if (!guess || guess < 1 || guess > Number(round.range)) {
         resultEl.textContent = `Guess from 1 to ${round.range}.`;
@@ -1305,24 +1397,35 @@
 
       const target = Number(secrets[opponent].value);
       const attempts = Number(playerStates[me].attempts || 0) + 1;
-      const correctAt = guess === target ? new Date().toISOString() : null;
-      let clue = `Last guess: ${guess}. Too low, go higher ⬆️`;
-      if (guess > target) clue = `Last guess: ${guess}. Too high, go lower ⬇️`;
+      const guessedAt = new Date().toISOString();
+      const correctAt = guess === target ? guessedAt : null;
+      let clue = "Too low - go higher ⬆️";
+      if (guess > target) clue = "Too high - go lower ⬇️";
       if (correctAt) clue = `Correct in ${attempts} attempt${attempts === 1 ? "" : "s"} 🎉`;
+      const guesses = [
+        ...(Array.isArray(playerStates[me].guesses) ? playerStates[me].guesses : []),
+        { guess, clue, guessedAt, correct: Boolean(correctAt) }
+      ];
       await shared.set(`pf_number_duel_state_${me}`, {
         roundId: round.id,
         attempts,
+        guesses,
         lastGuess: guess,
         clue,
         correctAt
       });
       guessEl.value = "";
-      refreshFromStore();
+      round = {
+        ...round,
+        turn: correctAt ? me : opponent,
+        winner: correctAt ? me : null,
+        winnerAt: correctAt,
+        lastActionAt: guessedAt
+      };
+      await shared.set(roundKey, round);
 
       if (correctAt) {
-        const wonBy = winnerFromStates() || me;
-        round = { ...round, winner: wonBy, winnerAt: playerStates[wonBy].correctAt || correctAt };
-        await shared.set(roundKey, round);
+        const wonBy = me;
         scores = { frog: 0, princess: 0, lastScoredRound: null, ...shared.get("pf_game_scores", {}) };
         if (scores.lastScoredRound !== round.id) {
           scores[wonBy] = Number(scores[wonBy] || 0) + 1;
@@ -1333,10 +1436,10 @@
           id: round.id,
           game: "number",
           winner: wonBy,
-          result: `${playerStates[wonBy].attempts || attempts} guesses`
+          result: `${attempts} guesses`
         });
-        refreshFromStore();
       }
+      refreshFromStore();
     });
 
     document.getElementById("resetScores").addEventListener("click", async () => {
@@ -1371,7 +1474,7 @@
 
     const players = ["frog", "princess"];
     const playerLabels = { frog: "Frog 🐸", princess: "Princess 👑" };
-    const defaultRound = { id: null, length: 3, startedAt: null, winner: null, winnerAt: null };
+    const defaultRound = { id: null, length: 3, starter: null, turn: null, startedAt: null, winner: null, winnerAt: null };
     const defaultPlayerState = { roundId: null, attempts: 0, guesses: [], correctAt: null };
     let round = { ...defaultRound, ...shared.get("pf_word_round", defaultRound) };
     let scores = { frog: 0, princess: 0, lastScoredRound: null, ...shared.get("pf_word_scores", {}) };
@@ -1433,16 +1536,26 @@
         .sort((a, b) => Date.parse(playerStates[a].correctAt) - Date.parse(playerStates[b].correctAt))[0] || null;
     }
 
+    function currentTurn() {
+      if (isGamePlayer(round.turn)) return round.turn;
+      if (isGamePlayer(round.starter)) return round.starter;
+      return "frog";
+    }
+
+    function allWordGuesses() {
+      return players
+        .flatMap((player) => (Array.isArray(playerStates[player].guesses) ? playerStates[player].guesses : [])
+          .map((guess) => ({ ...guess, player })))
+        .sort((a, b) => Date.parse(b.guessedAt) - Date.parse(a.guessedAt));
+    }
+
     function renderScores() {
       document.getElementById("frogWordScore").textContent = scores.frog || 0;
       document.getElementById("princessWordScore").textContent = scores.princess || 0;
     }
 
     function renderHistory() {
-      const guesses = players
-        .flatMap((player) => (Array.isArray(playerStates[player].guesses) ? playerStates[player].guesses : [])
-          .map((guess) => ({ ...guess, player })))
-        .sort((a, b) => Date.parse(b.guessedAt) - Date.parse(a.guessedAt));
+      const guesses = allWordGuesses();
       if (!guesses.length) {
         historyEl.innerHTML = `<p class="game-secret">Both players' guesses will appear here.</p>`;
         return;
@@ -1465,8 +1578,8 @@
       const opponent = hasIdentity ? otherPlayer(me) : null;
       const ready = bothReady();
       const winner = round.winner || winnerFromStates();
+      const turn = currentTurn();
       const mySecret = hasIdentity ? secrets[me] : null;
-      const myState = hasIdentity ? playerStates[me] : defaultPlayerState;
       const selectedLength = Number(round.id ? round.length : lengthEl.value || 3);
 
       lengthEl.value = String(selectedLength);
@@ -1478,7 +1591,7 @@
         const online = isOnline(player);
         if (!round.id) return online ? "Ready" : "Away";
         if (winner) return winner === player ? "Won 🎉" : "Round over";
-        if (ready) return `${playerStates[player].attempts || 0} guesses${online ? "" : " · away"}`;
+        if (ready) return `${player === turn ? "Up next" : "Waiting"} · ${playerStates[player].attempts || 0} guesses${online ? "" : " · away"}`;
         if (secrets[player]) return `Word locked${online ? "" : " · away"}`;
         return online ? "Choosing" : "Away";
       }
@@ -1490,8 +1603,11 @@
         : winner
           ? `${playerLabels[winner]} won`
           : ready
-            ? `Live: ${round.length} letters`
+            ? `Live: ${playerLabels[turn]}'s turn`
             : "Locking words";
+
+      hostStatus.closest(".game-status-card")?.classList.toggle("current-turn", Boolean(ready && !winner && turn === "frog"));
+      guesserStatus.closest(".game-status-card")?.classList.toggle("current-turn", Boolean(ready && !winner && turn === "princess"));
 
       if (!hasIdentity) secretStatus.textContent = "Choose Frog or Princess before joining the word duel.";
       else if (!round.id) secretStatus.textContent = "Choose the difficulty, start the duel, then lock your word.";
@@ -1499,36 +1615,40 @@
       else if (mySecret) secretStatus.textContent = "Your word is locked and hidden from your opponent.";
       else secretStatus.textContent = `Choose a ${round.length}-letter secret word, then lock it.`;
 
-      if (!ready) guessHelp.textContent = "Both players must lock their secret words before guessing.";
+      if (!ready) guessHelp.textContent = round.id
+        ? `Both players must lock their words. ${playerLabels[turn]} guesses first.`
+        : "Both players must lock their secret words before guessing.";
       else if (winner) guessHelp.textContent = `${playerLabels[winner]} won this word duel.`;
       else if (!hasIdentity) guessHelp.textContent = "Choose your player before guessing.";
-      else guessHelp.textContent = `Guess ${playerLabels[opponent]}'s ${round.length}-letter word.`;
+      else if (me !== turn) guessHelp.textContent = `Waiting for ${playerLabels[turn]} to guess.`;
+      else guessHelp.textContent = `Your turn: guess ${playerLabels[opponent]}'s ${round.length}-letter word.`;
 
       const resetButton = document.getElementById("resetWordGame");
       if (startingRound) resetButton.textContent = winner ? "Preparing rematch..." : "Starting duel...";
       else if (winner) resetButton.textContent = "Play again";
       else if (!round.id) resetButton.textContent = "Start word duel";
-      else resetButton.textContent = me === "frog" ? "Restart round" : "Round in progress";
-      resetButton.disabled = startingRound || !hasIdentity || Boolean(round.id && !winner && me !== "frog");
+      else resetButton.textContent = "Restart round";
+      resetButton.disabled = startingRound || !hasIdentity;
       resetButton.classList.toggle("primary", Boolean(hasIdentity && (!round.id || winner)));
       document.getElementById("setSecretWord").disabled = !hasIdentity || Boolean(mySecret) || Boolean(winner);
-      document.getElementById("checkWordGuess").disabled = !hasIdentity || Boolean(winner);
+      document.getElementById("checkWordGuess").disabled = !hasIdentity || !ready || Boolean(winner) || me !== turn;
       lengthEl.disabled = Boolean(round.id && !winner);
       secretEl.disabled = !hasIdentity || Boolean(mySecret) || Boolean(winner);
-      guessEl.disabled = !hasIdentity || Boolean(winner);
+      guessEl.disabled = !hasIdentity || !ready || Boolean(winner) || me !== turn;
 
-      const latestGuess = Array.isArray(myState.guesses) ? myState.guesses.at(-1) : null;
+      const latestGuess = allWordGuesses()[0] || null;
       if (!hasIdentity) resultEl.textContent = "Choose Frog or Princess to join the word duel.";
       else if (winner) {
         resultEl.textContent = winner === me
           ? `You guessed ${playerLabels[opponent]}'s word first. Their word was ${secrets[opponent]?.value}. Tap Play again for a fresh duel.`
           : `${playerLabels[winner]} guessed your word first. Their word was ${secrets[opponent]?.value}. Tap Play again for a fresh duel.`;
-      } else if (latestGuess) {
-        resultEl.textContent = `${latestGuess.guess} has ${latestGuess.common} / ${round.length} letters in common.`;
       } else if (!round.id) {
         resultEl.textContent = "Either player can start a new word duel.";
       } else if (ready) {
-        resultEl.textContent = "Both words are locked. Start guessing.";
+        const turnMessage = me === turn ? "Your turn - enter a word." : `${playerLabels[turn]} is thinking.`;
+        resultEl.textContent = latestGuess
+          ? `${playerLabels[latestGuess.player]} guessed ${latestGuess.guess}: ${latestGuess.common} / ${round.length} letters in common. ${turnMessage}`
+          : `${playerLabels[turn]} goes first. ${turnMessage}`;
       } else {
         resultEl.textContent = "Waiting for both secret words to be locked.";
       }
@@ -1574,6 +1694,17 @@
       guessEl.value = cleanWord(guessEl.value).slice(0, Number(round.length || lengthEl.value));
     });
 
+    secretEl.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" || document.getElementById("setSecretWord").disabled) return;
+      event.preventDefault();
+      document.getElementById("setSecretWord").click();
+    });
+    guessEl.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" || document.getElementById("checkWordGuess").disabled) return;
+      event.preventDefault();
+      document.getElementById("checkWordGuess").click();
+    });
+
     document.getElementById("resetWordGame").addEventListener("click", async () => {
       if (!isGamePlayer(roleEl.value) || startingRound) return;
       startingRound = true;
@@ -1583,17 +1714,17 @@
         await shared.pull(true);
         refreshFromStore();
         const finishedBy = round.winner || winnerFromStates();
-        if (round.id && !finishedBy && roleEl.value !== "frog") {
-          toast("This round is still in progress");
-          return;
-        }
         if (round.id && !finishedBy && !window.confirm("Restart this word duel? Both secret words and all guesses will be cleared.")) {
           return;
         }
+        const previousStarter = isGamePlayer(round.starter) ? round.starter : null;
+        const starter = previousStarter ? otherPlayer(previousStarter) : roleEl.value;
         const nextRound = {
           ...defaultRound,
           id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           length: Number(lengthEl.value),
+          starter,
+          turn: starter,
           startedAt: new Date().toISOString()
         };
         const saved = await shared.set("pf_word_round", nextRound);
@@ -1643,6 +1774,11 @@
       const opponent = otherPlayer(me);
       const winner = round.winner || winnerFromStates();
       if (winner) return;
+      const turn = currentTurn();
+      if (me !== turn) {
+        resultEl.textContent = `It is ${playerLabels[turn]}'s turn.`;
+        return;
+      }
       const guess = cleanWord(guessEl.value);
       if (guess.length !== Number(round.length)) {
         resultEl.textContent = `Enter a ${round.length}-letter guess.`;
@@ -1652,10 +1788,11 @@
       const target = secrets[opponent].value;
       const common = countCommonLetters(guess, target);
       const attempts = Number(playerStates[me].attempts || 0) + 1;
-      const correctAt = guess === target ? new Date().toISOString() : null;
+      const guessedAt = new Date().toISOString();
+      const correctAt = guess === target ? guessedAt : null;
       const guesses = [
         ...(Array.isArray(playerStates[me].guesses) ? playerStates[me].guesses : []),
-        { guess, common, guessedAt: new Date().toISOString(), correct: Boolean(correctAt) }
+        { guess, common, guessedAt, correct: Boolean(correctAt) }
       ];
       await shared.set(`pf_word_duel_state_${me}`, {
         roundId: round.id,
@@ -1664,12 +1801,17 @@
         correctAt
       });
       guessEl.value = "";
-      refreshFromStore();
+      round = {
+        ...round,
+        turn: correctAt ? me : opponent,
+        winner: correctAt ? me : null,
+        winnerAt: correctAt,
+        lastActionAt: guessedAt
+      };
+      await shared.set("pf_word_round", round);
 
       if (correctAt) {
-        const wonBy = winnerFromStates() || me;
-        round = { ...round, winner: wonBy, winnerAt: playerStates[wonBy].correctAt || correctAt };
-        await shared.set("pf_word_round", round);
+        const wonBy = me;
         scores = { frog: 0, princess: 0, lastScoredRound: null, ...shared.get("pf_word_scores", {}) };
         if (scores.lastScoredRound !== round.id) {
           scores[wonBy] = Number(scores[wonBy] || 0) + 1;
@@ -1680,10 +1822,10 @@
           id: round.id,
           game: "word",
           winner: wonBy,
-          result: `${playerStates[wonBy].attempts || attempts} guesses`
+          result: `${attempts} guesses`
         });
-        refreshFromStore();
       }
+      refreshFromStore();
     });
 
     document.getElementById("resetWordScores").addEventListener("click", async () => {

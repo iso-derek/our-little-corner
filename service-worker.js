@@ -1,4 +1,4 @@
-const CACHE_NAME = "pf-corner-v17";
+const CACHE_NAME = "pf-corner-v18";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -12,11 +12,11 @@ const APP_SHELL = [
   "./quotes.html",
   "./love.html",
   "./offline.html",
-  "./style.css?v=20260824-6",
+  "./style.css?v=20260824-7",
   "./auth.js?v=20260824-2",
-  "./script.js?v=20260824-6",
+  "./script.js?v=20260824-7",
   "./app-enhancements.js?v=20260824-4",
-  "./games-plus.js?v=20260824-4",
+  "./games-plus.js?v=20260824-5",
   "./couple-hub.js?v=20260824-4",
   "./supabase-config.js?v=20260824-1",
   "./site.webmanifest",

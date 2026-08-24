@@ -208,6 +208,7 @@
     let round = defaultRound;
     let stats = defaultStats;
     let answers = { frog: null, princess: null };
+    let startingRound = false;
 
     function answerFor(player) {
       const answer = answers[player];
@@ -257,6 +258,15 @@
       optionB.disabled = !validRole(me) || !question || Boolean(mine);
       optionA.classList.toggle("selected", mine === "A");
       optionB.classList.toggle("selected", mine === "B");
+      const nextButton = document.getElementById("nextWouldQuestion");
+      nextButton.textContent = startingRound
+        ? "Preparing question..."
+        : !question
+          ? "Start question"
+          : complete
+            ? "Next question"
+            : "Restart question";
+      nextButton.disabled = startingRound || !validRole(me);
       const result = document.getElementById("wouldResult");
       if (!question) result.textContent = "Your choice stays private until both answers are locked.";
       else if (complete) result.textContent = frog === princess ? `Same answer: ${frog === "A" ? question[0] : question[1]}.` : `${roleName("frog")} chose ${frog === "A" ? question[0] : question[1]}; ${roleName("princess")} chose ${princess === "A" ? question[0] : question[1]}.`;
@@ -279,12 +289,28 @@
     document.getElementById("wouldOptionA").addEventListener("click", () => choose("A"));
     document.getElementById("wouldOptionB").addEventListener("click", () => choose("B"));
     document.getElementById("nextWouldQuestion").addEventListener("click", async () => {
-      let index = Math.floor(Math.random() * questions.length);
-      if (index === Number(round.index)) index = (index + 1) % questions.length;
-      round = { id: makeId("would"), index, startedBy: role(), startedAt: new Date().toISOString() };
-      await shared().set("pf_would_round", round);
-      load();
+      if (startingRound || !validRole(role())) return;
+      startingRound = true;
       render();
+      try {
+        await pull();
+        load();
+        const activeQuestion = questions[Number(round.index)] || null;
+        const complete = Boolean(answerFor("frog") && answerFor("princess"));
+        if (activeQuestion && !complete && !window.confirm("Start a different question? Both current choices will be cleared.")) return;
+        let index = Math.floor(Math.random() * questions.length);
+        if (index === Number(round.index)) index = (index + 1) % questions.length;
+        const nextRound = { id: makeId("would"), index, startedBy: role(), startedAt: new Date().toISOString() };
+        const saved = await shared().set("pf_would_round", nextRound);
+        if (!saved) {
+          runtime().toast("Could not sync the new question");
+          return;
+        }
+        round = nextRound;
+      } finally {
+        startingRound = false;
+        render();
+      }
     });
     controllers.would = { refresh() { load(); render(); } };
     load();
@@ -296,6 +322,7 @@
     const defaultStats = { frog: 0, princess: 0, nextAsker: "frog", lastRound: null };
     let round = defaultRound;
     let stats = defaultStats;
+    let actionBusy = false;
 
     function normalize(value) {
       return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -322,9 +349,18 @@
       guessForm.hidden = !active;
       document.getElementById("triviaQuestionText").textContent = active ? round.question : "Waiting for a question.";
       document.getElementById("triviaHintText").textContent = active && round.hint ? `Hint: ${round.hint}` : "";
-      document.getElementById("triviaGuessInput").disabled = me !== guesser || finished;
-      guessForm.querySelector("button").disabled = me !== guesser || finished;
-      document.getElementById("nextTriviaRound").disabled = !finished;
+      questionForm.querySelector("button").disabled = actionBusy;
+      document.getElementById("triviaGuessInput").disabled = actionBusy || me !== guesser || finished;
+      guessForm.querySelector("button").disabled = actionBusy || me !== guesser || finished;
+      const nextButton = document.getElementById("nextTriviaRound");
+      nextButton.textContent = actionBusy
+        ? "Updating round..."
+        : !active
+          ? "Waiting for question"
+          : finished
+            ? "Next question"
+            : "Restart round";
+      nextButton.disabled = actionBusy || !validRole(me) || !active;
       const result = document.getElementById("triviaResult");
       if (!validRole(me)) result.textContent = "Choose a player to join trivia.";
       else if (!active && me === asker) result.textContent = "Write a question only your partner should know.";
@@ -337,44 +373,84 @@
     document.getElementById("triviaQuestionForm").addEventListener("submit", async (event) => {
       event.preventDefault();
       const form = event.currentTarget;
-      await pull();
-      load();
-      const me = role();
-      if (me !== stats.nextAsker || (round.id && round.status !== "finished")) return;
-      const question = document.getElementById("triviaQuestionInput").value.trim();
-      const answer = document.getElementById("triviaAnswerInput").value.trim();
-      const hint = document.getElementById("triviaHintInput").value.trim();
-      if (!question || !answer) return;
-      round = { id: makeId("trivia"), asker: me, question, answer, hint, status: "live", guess: "", correct: null, createdAt: new Date().toISOString() };
-      await shared().set("pf_trivia_round", round);
-      form.reset();
+      if (actionBusy) return;
+      actionBusy = true;
       render();
+      try {
+        await pull();
+        load();
+        const me = role();
+        if (me !== stats.nextAsker || (round.id && round.status !== "finished")) return;
+        const question = document.getElementById("triviaQuestionInput").value.trim();
+        const answer = document.getElementById("triviaAnswerInput").value.trim();
+        const hint = document.getElementById("triviaHintInput").value.trim();
+        if (!question || !answer) return;
+        const nextRound = { id: makeId("trivia"), asker: me, question, answer, hint, status: "live", guess: "", correct: null, createdAt: new Date().toISOString() };
+        const saved = await shared().set("pf_trivia_round", nextRound);
+        if (!saved) {
+          runtime().toast("Could not sync the trivia question");
+          return;
+        }
+        round = nextRound;
+        form.reset();
+      } finally {
+        actionBusy = false;
+        render();
+      }
     });
     document.getElementById("triviaGuessForm").addEventListener("submit", async (event) => {
       event.preventDefault();
       const form = event.currentTarget;
-      await pull();
-      load();
-      const me = role();
-      if (!round.id || me !== otherRole(round.asker) || round.status === "finished") return;
-      const guess = document.getElementById("triviaGuessInput").value.trim();
-      if (!guess) return;
-      const correct = normalize(guess) === normalize(round.answer);
-      round = { ...round, guess, correct, status: "finished", guessedAt: new Date().toISOString() };
-      await shared().set("pf_trivia_round", round);
-      if (correct && stats.lastRound !== round.id) stats[me] = Number(stats[me] || 0) + 1;
-      stats.lastRound = round.id;
-      stats.nextAsker = otherRole(round.asker);
-      await shared().set("pf_trivia_stats", stats);
-      await recordMatch({ id: round.id, game: "trivia", winner: correct ? me : round.asker, result: correct ? "Correct answer" : "Answer revealed" });
-      form.reset();
+      if (actionBusy) return;
+      actionBusy = true;
       render();
+      try {
+        await pull();
+        load();
+        const me = role();
+        if (!round.id || me !== otherRole(round.asker) || round.status === "finished") return;
+        const guess = document.getElementById("triviaGuessInput").value.trim();
+        if (!guess) return;
+        const correct = normalize(guess) === normalize(round.answer);
+        round = { ...round, guess, correct, status: "finished", guessedAt: new Date().toISOString() };
+        const saved = await shared().set("pf_trivia_round", round);
+        if (!saved) {
+          runtime().toast("Could not sync the trivia answer");
+          return;
+        }
+        if (correct && stats.lastRound !== round.id) stats[me] = Number(stats[me] || 0) + 1;
+        stats.lastRound = round.id;
+        stats.nextAsker = otherRole(round.asker);
+        await shared().set("pf_trivia_stats", stats);
+        await recordMatch({ id: round.id, game: "trivia", winner: correct ? me : round.asker, result: correct ? "Correct answer" : "Answer revealed" });
+        form.reset();
+      } finally {
+        actionBusy = false;
+        render();
+      }
     });
     document.getElementById("nextTriviaRound").addEventListener("click", async () => {
-      if (round.status !== "finished") return;
-      round = { ...defaultRound, asker: stats.nextAsker };
-      await shared().set("pf_trivia_round", round);
+      if (actionBusy || !validRole(role())) return;
+      actionBusy = true;
       render();
+      try {
+        await pull();
+        load();
+        const active = Boolean(round.id && round.question);
+        if (!active) return;
+        if (round.status !== "finished" && !window.confirm("Restart this trivia round? The current question and answer will be cleared.")) return;
+        const asker = round.status === "finished" ? stats.nextAsker : round.asker;
+        const nextRound = { ...defaultRound, asker };
+        const saved = await shared().set("pf_trivia_round", nextRound);
+        if (!saved) {
+          runtime().toast("Could not reset the trivia round");
+          return;
+        }
+        round = nextRound;
+      } finally {
+        actionBusy = false;
+        render();
+      }
     });
     controllers.trivia = { refresh() { load(); render(); } };
     load();
@@ -411,6 +487,7 @@
     const defaultState = { id: null, turn: "frog", type: null, prompt: "", status: "ready", completed: 0 };
     let state = defaultState;
     let selectedType = "truth";
+    let actionBusy = false;
 
     function load() {
       state = { ...defaultState, ...shared().get("pf_truth_state", defaultState) };
@@ -425,8 +502,11 @@
       document.getElementById("truthPromptLabel").textContent = state.type ? state.type.toUpperCase() : "PICK A SIDE";
       document.getElementById("truthPrompt").textContent = state.prompt || "Your prompt will appear here.";
       document.querySelectorAll("[data-truth-type]").forEach((button) => button.classList.toggle("active", button.dataset.truthType === selectedType));
-      document.getElementById("drawTruthPrompt").disabled = me !== state.turn || state.status === "drawn";
-      document.getElementById("completeTruthPrompt").disabled = me !== state.turn || state.status !== "drawn";
+      document.getElementById("drawTruthPrompt").disabled = actionBusy || me !== state.turn || state.status === "drawn";
+      document.getElementById("completeTruthPrompt").disabled = actionBusy || me !== state.turn || state.status !== "drawn";
+      const resetButton = document.getElementById("resetTruthGame");
+      resetButton.textContent = actionBusy ? "Updating..." : "New session";
+      resetButton.disabled = actionBusy || !validRole(me);
       const result = document.getElementById("truthResult");
       if (!validRole(me)) result.textContent = "Choose a player to join.";
       else if (state.status === "drawn") result.textContent = me === state.turn ? "Complete it, then pass the turn." : `${roleName(state.turn)} is taking this one.`;
@@ -438,25 +518,63 @@
       render();
     }));
     document.getElementById("drawTruthPrompt").addEventListener("click", async () => {
-      await pull();
-      load();
-      if (role() !== state.turn || state.status === "drawn") return;
-      const deck = prompts[selectedType];
-      const prompt = deck[Math.floor(Math.random() * deck.length)];
-      state = { ...state, id: makeId("truth"), type: selectedType, prompt, status: "drawn", drawnAt: new Date().toISOString() };
-      await shared().set("pf_truth_state", state);
+      if (actionBusy) return;
+      actionBusy = true;
       render();
+      try {
+        await pull();
+        load();
+        if (role() !== state.turn || state.status === "drawn") return;
+        const deck = prompts[selectedType];
+        const prompt = deck[Math.floor(Math.random() * deck.length)];
+        const nextState = { ...state, id: makeId("truth"), type: selectedType, prompt, status: "drawn", drawnAt: new Date().toISOString() };
+        const saved = await shared().set("pf_truth_state", nextState);
+        if (saved) state = nextState;
+        else runtime().toast("Could not sync the prompt");
+      } finally {
+        actionBusy = false;
+        render();
+      }
     });
     document.getElementById("completeTruthPrompt").addEventListener("click", async () => {
-      await pull();
-      load();
-      if (role() !== state.turn || state.status !== "drawn") return;
-      const completedRound = state.id;
-      const completedBy = state.turn;
-      state = { ...state, turn: otherRole(state.turn), status: "ready", prompt: "", type: null, completed: Number(state.completed || 0) + 1 };
-      await shared().set("pf_truth_state", state);
-      await recordMatch({ id: completedRound, game: "truth", result: `${roleName(completedBy)} completed a prompt` });
+      if (actionBusy) return;
+      actionBusy = true;
       render();
+      try {
+        await pull();
+        load();
+        if (role() !== state.turn || state.status !== "drawn") return;
+        const completedRound = state.id;
+        const completedBy = state.turn;
+        const nextState = { ...state, turn: otherRole(state.turn), status: "ready", prompt: "", type: null, completed: Number(state.completed || 0) + 1 };
+        const saved = await shared().set("pf_truth_state", nextState);
+        if (!saved) {
+          runtime().toast("Could not pass the turn");
+          return;
+        }
+        state = nextState;
+        await recordMatch({ id: completedRound, game: "truth", result: `${roleName(completedBy)} completed a prompt` });
+      } finally {
+        actionBusy = false;
+        render();
+      }
+    });
+    document.getElementById("resetTruthGame").addEventListener("click", async () => {
+      if (actionBusy || !validRole(role())) return;
+      actionBusy = true;
+      render();
+      try {
+        await pull();
+        load();
+        if (state.status === "drawn" && !window.confirm("Start a new Truth or Dare session? The current prompt will be cleared.")) return;
+        const nextState = { ...defaultState, turn: role() };
+        const saved = await shared().set("pf_truth_state", nextState);
+        if (saved) state = nextState;
+        else runtime().toast("Could not start a new session");
+      } finally {
+        actionBusy = false;
+        render();
+      }
     });
     controllers.truth = { refresh() { load(); render(); } };
     load();
@@ -468,6 +586,8 @@
     const defaultState = { id: null, cards: [], revealed: [], matched: [], turn: "frog", scores: { frog: 0, princess: 0 }, status: "ready" };
     let state = defaultState;
     let resolving = false;
+    let revealing = false;
+    let startingBoard = false;
 
     function shuffle(values) {
       const result = [...values];
@@ -485,13 +605,16 @@
 
     function render() {
       const board = document.getElementById("memoryMatchBoard");
+      const me = role();
+      const canReveal = validRole(me) && state.status === "live" && me === state.turn && !resolving && !revealing && state.revealed.length < 2;
       document.getElementById("memoryTurnStatus").textContent = !state.id ? "Start a game" : state.status === "finished" ? "Finished" : roleName(state.turn);
       document.getElementById("memoryFrogScore").textContent = `${state.scores.frog || 0} pairs`;
       document.getElementById("memoryPrincessScore").textContent = `${state.scores.princess || 0} pairs`;
       document.getElementById("memoryPairsStatus").textContent = `${Math.floor((state.matched || []).length / 2)} / 8`;
       board.innerHTML = state.cards?.length ? state.cards.map((symbol, index) => {
         const open = state.revealed.includes(index) || state.matched.includes(index);
-        return `<button class="memory-match-card ${open ? "revealed" : ""} ${state.matched.includes(index) ? "matched" : ""}" type="button" data-card-index="${index}" aria-label="${open ? `Card ${index + 1}: ${symbol}` : `Hidden card ${index + 1}`}" ${state.status === "finished" ? "disabled" : ""}><span>${open ? symbol : "PF"}</span></button>`;
+        const disabled = !canReveal || open;
+        return `<button class="memory-match-card ${open ? "revealed" : ""} ${state.matched.includes(index) ? "matched" : ""}" type="button" data-card-index="${index}" aria-label="${open ? `Card ${index + 1}: ${symbol}` : `Hidden card ${index + 1}`}" ${disabled ? "disabled" : ""}><span>${open ? symbol : "PF"}</span></button>`;
       }).join("") : '<p class="game-secret">The cards will appear when a board is started.</p>';
       board.querySelectorAll("[data-card-index]").forEach((button) => button.addEventListener("click", () => revealCard(Number(button.dataset.cardIndex))));
       const result = document.getElementById("memoryMatchResult");
@@ -500,9 +623,18 @@
         const frog = Number(state.scores.frog || 0);
         const princess = Number(state.scores.princess || 0);
         result.textContent = frog === princess ? "A perfect tie." : `${roleName(frog > princess ? "frog" : "princess")} found the most pairs.`;
-      } else if (role() === state.turn) result.textContent = state.revealed.length === 1 ? "Choose one more card." : "Your turn. Find a pair.";
+      } else if (state.revealed.length === 2) result.textContent = "Checking that pair...";
+      else if (me === state.turn) result.textContent = state.revealed.length === 1 ? "Choose one more card." : "Your turn. Find a pair.";
       else result.textContent = `${roleName(state.turn)} is choosing.`;
-      document.getElementById("newMemoryMatch").textContent = state.id ? "Rematch" : "New board";
+      const newBoardButton = document.getElementById("newMemoryMatch");
+      newBoardButton.textContent = startingBoard
+        ? "Preparing board..."
+        : !state.id
+          ? "New board"
+          : state.status === "finished"
+            ? "Rematch"
+            : "Restart board";
+      newBoardButton.disabled = startingBoard || !validRole(me);
     }
 
     async function resolvePair(roundId, indices) {
@@ -537,33 +669,55 @@
     }
 
     async function revealCard(index) {
-      await pull();
-      load();
-      const me = role();
-      if (!state.id || state.status !== "live" || me !== state.turn || state.revealed.length >= 2 || state.revealed.includes(index) || state.matched.includes(index)) return;
-      state.revealed = [...state.revealed, index];
-      await shared().set("pf_memory_match", state);
+      if (revealing) return;
+      revealing = true;
       render();
-      if (state.revealed.length === 2) resolvePair(state.id, [...state.revealed]);
+      try {
+        await pull();
+        load();
+        const me = role();
+        if (!state.id || state.status !== "live" || me !== state.turn || state.revealed.length >= 2 || state.revealed.includes(index) || state.matched.includes(index)) return;
+        const nextState = { ...state, revealed: [...state.revealed, index] };
+        const saved = await shared().set("pf_memory_match", nextState);
+        if (!saved) {
+          runtime().toast("Could not reveal that card");
+          return;
+        }
+        state = nextState;
+        if (state.revealed.length === 2) resolvePair(state.id, [...state.revealed]);
+      } finally {
+        revealing = false;
+        render();
+      }
     }
 
     document.getElementById("newMemoryMatch").addEventListener("click", async () => {
       const me = role();
-      if (!validRole(me)) return;
-      if (state.id && state.status === "live" && !window.confirm("Start a fresh board?")) return;
-      state = {
-        ...defaultState,
-        id: makeId("memory"),
-        cards: shuffle([...symbols, ...symbols]),
-        revealed: [],
-        matched: [],
-        turn: me,
-        scores: { frog: 0, princess: 0 },
-        status: "live",
-        startedAt: new Date().toISOString()
-      };
-      await shared().set("pf_memory_match", state);
+      if (!validRole(me) || startingBoard) return;
+      startingBoard = true;
       render();
+      try {
+        await pull();
+        load();
+        if (state.id && state.status === "live" && !window.confirm("Start a fresh board? The current cards and scores will be cleared.")) return;
+        const nextState = {
+          ...defaultState,
+          id: makeId("memory"),
+          cards: shuffle([...symbols, ...symbols]),
+          revealed: [],
+          matched: [],
+          turn: me,
+          scores: { frog: 0, princess: 0 },
+          status: "live",
+          startedAt: new Date().toISOString()
+        };
+        const saved = await shared().set("pf_memory_match", nextState);
+        if (saved) state = nextState;
+        else runtime().toast("Could not start a new board");
+      } finally {
+        startingBoard = false;
+        render();
+      }
     });
     controllers.memory = { refresh() { load(); render(); } };
     load();

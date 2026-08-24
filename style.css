@@ -5234,6 +5234,23 @@ body:not(.is-editing-gifts) .gift-card .photo-upload-btn {
   border-right: 0;
 }
 
+.game-status-card.current-turn {
+  background: color-mix(in srgb, var(--gold-light) 34%, transparent);
+  box-shadow: inset 0 3px 0 var(--gold);
+}
+
+.game-status-card.current-turn strong::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--gold-light) 55%, transparent);
+  vertical-align: 0.12em;
+}
+
 .game-status-card span {
   color: var(--gold);
   font-size: 10px;
@@ -5276,6 +5293,15 @@ body:not(.is-editing-gifts) .gift-card .photo-upload-btn {
 
 .word-history {
   border-top: 1px solid var(--gold-light);
+}
+
+.number-history {
+  margin-bottom: 20px;
+}
+
+.number-history-row .common-result b {
+  color: var(--muted);
+  font-weight: 600;
 }
 
 .word-history-entry {
