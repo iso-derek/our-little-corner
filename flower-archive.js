@@ -1,46 +1,75 @@
 (function () {
   const COLLECTION_KEY = "pf_flower_gifts";
   const SEED_KEY = "pf_flower_archive_seed_v1";
-  const SIGNATURE_FLOWERS = ["rose", "peony", "tulip", "lily", "sunflower", "orchid", "baby's breath", "hydrangea"];
+  const PERSONAL_ARCHIVE_VERSION_KEY = "pf_flower_archive_personal_v2";
+  const PERSONAL_ARCHIVE_VERSION = 2;
+  const SIGNATURE_FLOWERS = ["rose", "peony", "tulip", "chrysanthemum", "carnation"];
+  const LEGACY_SEED_IDS = new Set(["flower-june21", "flower-for-my-princess", "flower-again-and-again"]);
   const DEFAULT_ENTRIES = [
     {
       id: "flower-june21",
       title: "The best yes",
       date: "2026-06-21",
       occasion: "A big question",
-      flowerTypes: "Pink roses and mixed blooms",
+      flowerTypes: "Pink roses, chrysanthemums, carnations and mixed blooms",
       palette: "Pink",
-      note: "Flowers, rushed planning, one very important question, and the best yes I have ever heard.",
-      photo: "images/june21-flowers.png",
+      note: "Flowers, kind of rushed planning, one very important question, and the best yes I have ever heard. This bouquet will always belong to that beautiful day.",
+      photo: "images/flower-june21-elevator.webp",
       createdBy: "frog",
       createdAt: "2026-06-21T12:00:00.000Z",
       updatedAt: "2026-06-21T12:00:00.000Z"
     },
     {
       id: "flower-for-my-princess",
-      title: "Flowers for my Princess",
+      title: "A room full of colour",
       date: "",
       occasion: "Just because",
-      flowerTypes: "Mixed roses",
+      flowerTypes: "Yellow, red, white, orange and pink roses",
       palette: "Mixed",
-      note: "A bright bouquet for the person who makes ordinary days feel worth celebrating.",
-      photo: "images/flowers-for-my-princess.png",
+      note: "A whole spectrum of roses for the person who makes ordinary days feel worth celebrating.",
+      photo: "images/flower-colourful-roses.webp",
       createdBy: "frog",
-      createdAt: "2026-06-20T12:00:00.000Z",
-      updatedAt: "2026-06-20T12:00:00.000Z"
+      createdAt: "2026-05-20T12:00:00.000Z",
+      updatedAt: "2026-05-20T12:00:00.000Z"
     },
     {
-      id: "flower-again-and-again",
-      title: "Flowers, again and again",
+      id: "flower-peonies-kitchen",
+      title: "Peonies in the kitchen",
       date: "",
       occasion: "Just because",
-      flowerTypes: "Tulips, peonies and roses",
-      palette: "Mixed",
-      note: "Not one grand gesture, but a growing collection of small reminders.",
-      photo: "images/memory5.jpeg",
+      flowerTypes: "Pink peonies",
+      palette: "Pink",
+      note: "Soft pink peonies, opened at home and immediately made part of the day. A small moment, properly kept.",
+      photo: "images/flower-peonies-princess.webp",
       createdBy: "frog",
-      createdAt: "2026-06-19T12:00:00.000Z",
-      updatedAt: "2026-06-19T12:00:00.000Z"
+      createdAt: "2026-04-20T12:00:00.000Z",
+      updatedAt: "2026-04-20T12:00:00.000Z"
+    },
+    {
+      id: "flower-tulips-kitchen",
+      title: "Tulips, held close",
+      date: "",
+      occasion: "Just because",
+      flowerTypes: "Pink, purple and white tulips",
+      palette: "Purple",
+      note: "A vase full of colour and that look on her face. These were never just flowers once she held them.",
+      photo: "images/flower-tulips-princess.webp",
+      createdBy: "frog",
+      createdAt: "2026-03-20T12:00:00.000Z",
+      updatedAt: "2026-03-20T12:00:00.000Z"
+    },
+    {
+      id: "flower-valentine-roses",
+      title: "Red roses, written in full",
+      date: "",
+      occasion: "Valentine's Day",
+      flowerTypes: "Deep red roses",
+      palette: "Red",
+      note: "The classic message, said properly: deep red roses, a handwritten note, and no doubt about who they were for.",
+      photo: "images/flower-valentine-roses.webp",
+      createdBy: "frog",
+      createdAt: "2026-02-14T12:00:00.000Z",
+      updatedAt: "2026-02-14T12:00:00.000Z"
     }
   ];
 
@@ -55,8 +84,8 @@
       care: "Trim the stems, refresh the water often, and keep the vase away from direct heat.",
       palette: "Red · pink · white · yellow",
       source: "https://www.rhs.org.uk/plants/roses/",
-      image: "images/june21-flowers.png",
-      imageAlt: "A pink rose bouquet held by Princess"
+      image: "images/flower-valentine-roses.webp",
+      imageAlt: "Deep red roses Frog gave to Princess"
     },
     {
       id: "peony",
@@ -68,8 +97,8 @@
       care: "Give the blooms room to open and remove leaves that would sit below the waterline.",
       palette: "Blush · coral · white · burgundy",
       source: "https://www.rhs.org.uk/plants/peony/herbaceous/growing-guide",
-      image: "images/memory5.jpeg",
-      imageAlt: "A collection of romantic bouquets including peonies"
+      image: "images/flower-peonies-princess.webp",
+      imageAlt: "Princess smiling beside her pink peonies"
     },
     {
       id: "tulip",
@@ -81,73 +110,34 @@
       care: "Use cool water, recut the stems, and rotate the vase as tulips naturally lean toward light.",
       palette: "Almost every colour",
       source: "https://www.rhs.org.uk/plants/tulip/growing-guide",
-      image: "images/memory5.jpeg",
-      imageAlt: "Pink tulips arranged among other bouquets"
+      image: "images/flower-tulips-princess.webp",
+      imageAlt: "Princess holding the pink, purple and white tulips Frog gave her"
     },
     {
-      id: "lily",
-      name: "Lily",
-      latin: "Lilium",
-      meaning: "Purity, admiration and a love with presence.",
-      story: "Lilies bring height, fragrance and theatre. White lilies are often linked with sincerity, while pink varieties can express admiration and tenderness.",
-      season: "Summer",
-      care: "Remove spent pollen carefully and keep lilies completely away from cats; every part is highly toxic to them.",
-      palette: "White · pink · orange · yellow",
-      source: "https://www.rhs.org.uk/plants/lilies/how-to-grow-lilies",
-      image: "images/flower-theatre-hero.png",
-      imageAlt: "A white lily in a dramatic flower display"
+      id: "chrysanthemum",
+      name: "Chrysanthemum",
+      latin: "Chrysanthemum",
+      meaning: "Joy, loyalty and a love that keeps showing up.",
+      story: "Chrysanthemums bring shape and abundance to the June bouquet. Their many petals make the arrangement feel generous, full and made to be noticed.",
+      season: "Late summer · autumn",
+      care: "Remove leaves below the waterline, refresh the vase often, and recut the stems every few days.",
+      palette: "White · blush · pink · burgundy",
+      source: "https://www.rhs.org.uk/plants/chrysanthemum",
+      image: "images/flower-june21-elevator.webp",
+      imageAlt: "Princess holding her mixed June bouquet with chrysanthemums"
     },
     {
-      id: "sunflower",
-      name: "Sunflower",
-      latin: "Helianthus",
-      meaning: "Loyalty, warmth and joy that turns toward the light.",
-      story: "A sunflower is difficult to receive without smiling. It feels optimistic and direct: a bright way to say that somebody makes the whole day better.",
-      season: "Summer · early autumn",
-      care: "Use a sturdy vase, plenty of fresh water, and remove any leaves below the waterline.",
-      palette: "Gold · amber · deep brown",
-      source: "https://www.rhs.org.uk/plants/sunflowers/growing-guide",
-      image: "images/flower-theatre-hero.png",
-      imageAlt: "A sunflower in a premium botanical display"
-    },
-    {
-      id: "orchid",
-      name: "Orchid",
-      latin: "Orchidaceae",
-      meaning: "Rare beauty, thoughtfulness and lasting admiration.",
-      story: "Orchids feel considered. Their sculptural flowers and long display life make them a strong choice when the message is: you are singular, and I notice you.",
-      season: "Year-round indoors",
-      care: "Keep cut stems in clean water and potted orchids in bright, indirect light without overwatering.",
-      palette: "White · purple · pink · green",
-      source: "https://www.rhs.org.uk/plants/orchids",
-      image: "images/flower-theatre-hero.png",
-      imageAlt: "A purple orchid in a dramatic flower display"
-    },
-    {
-      id: "baby-breath",
-      name: "Baby's Breath",
-      latin: "Gypsophila",
-      meaning: "Tenderness, sincerity and love in the little details.",
-      story: "Often used to support larger blooms, baby's breath has its own quiet beauty. It makes a bouquet feel airy and turns small gestures into something soft and complete.",
-      season: "Summer",
-      care: "Keep the fine stems dry above the waterline and remove any pieces that begin to brown.",
-      palette: "White · blush",
-      source: "https://www.rhs.org.uk/plants/gypsophila",
-      image: "images/flower-theatre-hero.png",
-      imageAlt: "White baby's breath surrounding a botanical display"
-    },
-    {
-      id: "hydrangea",
-      name: "Hydrangea",
-      latin: "Hydrangea",
-      meaning: "Gratitude, abundance and feelings too full for one small bloom.",
-      story: "One hydrangea head is already a bouquet of tiny flowers. It carries a sense of abundance and works beautifully when the feeling you want to express is generous and grateful.",
-      season: "Summer · autumn",
-      care: "Hydrangeas drink heavily: recut the stem, use a clean full vase, and mist the flower head lightly.",
-      palette: "Blue · pink · white · green",
-      source: "https://www.rhs.org.uk/plants/hydrangea",
-      image: "images/flower-theatre-hero.png",
-      imageAlt: "A blue hydrangea in a dramatic botanical display"
+      id: "carnation",
+      name: "Carnation",
+      latin: "Dianthus caryophyllus",
+      meaning: "Affection, fascination and a promise to remember the moment.",
+      story: "Carnations add soft, ruffled layers to the June bouquet. Pink varieties are traditionally associated with affection and gratitude, which suits this archive perfectly.",
+      season: "Late spring · summer",
+      care: "Cut above a stem node, use clean cool water, and keep the petals away from direct heat.",
+      palette: "Pink · white · red · coral",
+      source: "https://www.rhs.org.uk/plants/dianthus/carnations/growing-guide",
+      image: "images/flower-june21-elevator.webp",
+      imageAlt: "Princess holding her mixed June bouquet with pink carnations"
     }
   ];
 
@@ -213,7 +203,13 @@
   function discoveredFlowers() {
     const allWords = items.flatMap(flowerWords).join(" ");
     return SIGNATURE_FLOWERS.filter((name) => {
-      const variants = name === "baby's breath" ? ["baby's breath", "babys breath", "gypsophila"] : [name];
+      const variants = {
+        rose: ["rose", "roses"],
+        peony: ["peony", "peonies"],
+        tulip: ["tulip", "tulips"],
+        chrysanthemum: ["chrysanthemum", "chrysanthemums"],
+        carnation: ["carnation", "carnations"]
+      }[name] || [name];
       return variants.some((variant) => allWords.includes(variant));
     });
   }
@@ -316,7 +312,7 @@
       const photo = safePhoto(entry);
       const archiveNumber = String(items.indexOf(entry) + 1).padStart(2, "0");
       const photoMarkup = entry.photo
-        ? `<img src="${escapeHtml(photo || "images/flower-theatre-hero.png")}" data-photo-ref="${escapeHtml(entry.photo)}" alt="${escapeHtml(entry.title)}">`
+        ? `<img src="${escapeHtml(photo || "images/flower-colourful-roses.webp")}" data-photo-ref="${escapeHtml(entry.photo)}" alt="${escapeHtml(entry.title)}">`
         : `<span class="flower-entry-placeholder" aria-hidden="true"><b>Photograph</b><small>to be added</small></span>`;
       return `
         <article class="flower-entry" data-flower-id="${escapeHtml(entry.id)}">
@@ -458,6 +454,22 @@
     } else {
       items = DEFAULT_ENTRIES.map(normalizeEntry);
       await shared.set(COLLECTION_KEY, items);
+    }
+    const archiveVersion = Number(shared.get(PERSONAL_ARCHIVE_VERSION_KEY, 0)) || 0;
+    if (archiveVersion < PERSONAL_ARCHIVE_VERSION) {
+      const customEntries = items.filter((item) => !LEGACY_SEED_IDS.has(item.id) && !DEFAULT_ENTRIES.some((seed) => seed.id === item.id));
+      const existingById = new Map(items.map((item) => [item.id, item]));
+      items = DEFAULT_ENTRIES.map((seed, index) => {
+        const existing = existingById.get(seed.id);
+        return normalizeEntry({
+          ...seed,
+          date: existing?.date || seed.date,
+          createdBy: existing?.createdBy || seed.createdBy,
+          createdAt: existing?.createdAt || seed.createdAt
+        }, index);
+      }).concat(customEntries.map(normalizeEntry));
+      await shared.set(COLLECTION_KEY, items);
+      await shared.set(PERSONAL_ARCHIVE_VERSION_KEY, PERSONAL_ARCHIVE_VERSION);
     }
     if (!seeded) await shared.set(SEED_KEY, true);
   }

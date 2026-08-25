@@ -9088,8 +9088,11 @@ body.recycle-open { overflow: hidden; }
 
 .flower-hero-art {
   z-index: -3;
-  object-fit: cover;
-  object-position: center 46%;
+  right: 0;
+  left: auto;
+  width: min(62vw, 900px);
+  object-fit: contain;
+  object-position: right center;
 }
 
 .flower-hero-shade {
@@ -9226,7 +9229,7 @@ body.recycle-open { overflow: hidden; }
 
 .flower-specimen-selector {
   display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   border-top: 1px solid var(--flower-line);
   border-bottom: 1px solid var(--flower-line);
 }
@@ -9615,7 +9618,7 @@ body.recycle-open { overflow: hidden; }
 .flower-entry-photo {
   position: relative;
   min-width: 0;
-  aspect-ratio: 16 / 11;
+  aspect-ratio: 5 / 4;
   padding: 0;
   overflow: hidden;
   border: 0;
@@ -9854,8 +9857,8 @@ body.recycle-open { overflow: hidden; }
 
 @media (max-width: 1100px) {
   .flower-hero h1 { font-size: 72px; }
-  .flower-specimen-selector { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .flower-specimen-selector button:nth-child(5) { border-left: 0; }
+  .flower-specimen-selector { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .flower-specimen-selector button:nth-child(4) { border-left: 0; }
   .flower-spotlight-copy { padding: 46px; }
   .flower-spotlight-copy h3 { font-size: 56px; }
   .flower-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -9863,6 +9866,7 @@ body.recycle-open { overflow: hidden; }
 
 @media (max-width: 820px) {
   .flower-hero { min-height: 720px; }
+  .flower-hero-art { width: 72%; }
   .flower-hero-copy { width: calc(100% - 48px); margin: 0 24px 190px; }
   .flower-hero h1 { font-size: 58px; }
   .flower-hero-deck { font-size: 15px; }
@@ -9887,7 +9891,7 @@ body.recycle-open { overflow: hidden; }
 
 @media (max-width: 560px) {
   .flower-hero { min-height: 680px; }
-  .flower-hero-art { object-position: 59% center; }
+  .flower-hero-art { left: 0; width: 100%; object-fit: cover; object-position: 58% center; }
   .flower-hero-shade { background: linear-gradient(0deg, rgba(7, 15, 14, 0.95) 0%, rgba(7, 15, 14, 0.68) 55%, rgba(7, 15, 14, 0.12)); }
   .flower-hero-copy { margin-bottom: 204px; }
   .flower-hero h1 { font-size: 46px; line-height: 0.95; }
@@ -9904,7 +9908,6 @@ body.recycle-open { overflow: hidden; }
   .flower-section-head > p { font-size: 14px; }
   .flower-specimen-selector { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .flower-specimen-selector button:nth-child(odd) { border-left: 0; }
-  .flower-specimen-selector button:nth-child(5) { border-left: 0; }
   .flower-spotlight { margin-top: 28px; }
   .flower-spotlight-image { min-height: 330px; }
   .flower-spotlight-copy { padding: 34px 24px; }

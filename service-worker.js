@@ -1,4 +1,4 @@
-const CACHE_NAME = "pf-corner-v23";
+const CACHE_NAME = "pf-corner-v24";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -13,14 +13,14 @@ const APP_SHELL = [
   "./quotes.html",
   "./love.html",
   "./offline.html",
-  "./style.css?v=20260825-11",
+  "./style.css?v=20260825-12",
   "./auth.js?v=20260824-2",
   "./content-repository.js?v=20260825-2",
   "./offline-outbox.js?v=20260825-3",
   "./recycle-bin.js?v=20260825-1",
   "./corner-realtime.js?v=20260825-2",
   "./multiplayer-v2.js?v=20260825-3",
-  "./flower-archive.js?v=20260825-1",
+  "./flower-archive.js?v=20260825-2",
   "./script.js?v=20260825-12",
   "./app-enhancements.js?v=20260824-6",
   "./games-plus.js?v=20260825-7",
@@ -34,10 +34,11 @@ const APP_SHELL = [
   "./images/us-mirror.jpg",
   "./images/us-food-date.jpg",
   "./images/us-neon-mirror.jpg",
-  "./images/flower-theatre-hero.png",
-  "./images/flowers-for-my-princess.png",
-  "./images/june21-flowers.png",
-  "./images/memory5.jpeg"
+  "./images/flower-tulips-princess.webp",
+  "./images/flower-peonies-princess.webp",
+  "./images/flower-valentine-roses.webp",
+  "./images/flower-colourful-roses.webp",
+  "./images/flower-june21-elevator.webp"
 ];
 
 self.addEventListener("install", (event) => {
