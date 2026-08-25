@@ -1,2 +1,5 @@
 [functions.send-notification]
 verify_jwt = true
+
+[functions.daily-content-backup]
+verify_jwt = false

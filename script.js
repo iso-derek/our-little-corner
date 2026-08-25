@@ -11,6 +11,7 @@
   const passcode = config.passcode || "";
   const authKey = `pf_auth_${siteId}`;
   const remoteCache = {};
+  const normalizedRemoteKeys = new Set();
   const controllers = {};
   let remoteReady = false;
   let remotePullPromise = null;
@@ -54,17 +55,43 @@
     localStorage.setItem(key, JSON.stringify(value));
   }
 
+  function applyContentSnapshot(values) {
+    if (!values || typeof values !== "object" || Array.isArray(values)) return;
+    const nextKeys = new Set(Object.keys(values));
+    normalizedRemoteKeys.forEach((key) => {
+      if (!nextKeys.has(key) && !pendingRemoteWrites.has(key)) delete remoteCache[key];
+    });
+    normalizedRemoteKeys.clear();
+    Object.entries(values).forEach(([key, value]) => {
+      normalizedRemoteKeys.add(key);
+      const pending = pendingRemoteWrites.get(key);
+      remoteCache[key] = pending ? pending.value : value;
+    });
+  }
+
+  document.addEventListener("corner:content-snapshot", (event) => {
+    applyContentSnapshot(event.detail?.values);
+    if (!remoteReady) return;
+    refreshCurrentPage(false);
+    document.dispatchEvent(new CustomEvent("corner:remote-change", {
+      detail: { source: "normalized-content", snapshot: true }
+    }));
+  });
+
   const shared = {
     async init() {
       if (!supabaseClient) return;
+      await window.CornerContentRepository?.configure?.({ client: supabaseClient, siteId });
+      await window.CornerOutbox?.configure?.({ client: supabaseClient, siteId });
       const connected = await this.pull();
       if (!connected) {
         updateSyncStatus("offline");
         toast("Offline mode");
         return;
       }
+      await window.CornerOutbox?.flush?.(supabaseClient);
       subscribeToRemoteChanges();
-      const pollDelay = page === "game" ? 1000 : page === "messages" ? 4000 : 10000;
+      const pollDelay = page === "game" ? 8000 : page === "messages" ? 4000 : 10000;
       window.setInterval(async () => {
         if (await this.pull()) refreshCurrentPage(false);
       }, pollDelay);
@@ -91,6 +118,15 @@
           const pending = pendingRemoteWrites.get(row.key);
           remoteCache[row.key] = pending ? pending.value : row.value;
         });
+        if (window.CornerContentRepository?.enabled) {
+          try {
+            const content = await window.CornerContentRepository.pull("shared-pull");
+            applyContentSnapshot(content.values);
+            normalizedRemoteKeys.forEach((key) => remoteKeys.add(key));
+          } catch (contentError) {
+            console.warn("Normalized content load failed; legacy storage remains available.", contentError);
+          }
+        }
         if (remoteReady) {
           Object.keys(remoteCache).forEach((key) => {
             if (!remoteKeys.has(key) && !pendingRemoteWrites.has(key)) delete remoteCache[key];
@@ -116,30 +152,62 @@
     async set(key, value) {
       localSet(key, value);
       if (!supabaseClient) return true;
+      const normalized = Boolean(
+        window.CornerContentRepository?.enabled
+        && window.CornerContentRepository.supports(key)
+      );
+      if (!navigator.onLine) {
+        const queued = normalized
+          ? await window.CornerOutbox?.queueContent?.(siteId, key, value, "browser-offline")
+          : await window.CornerOutbox?.queueKeyValue?.(siteId, key, value, "browser-offline");
+        updateSyncStatus(queued ? "offline-queued" : "needs-attention");
+        return Boolean(queued);
+      }
       const writeId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       pendingRemoteWrites.set(key, { id: writeId, value });
       remoteCache[key] = value;
-      const { error } = await supabaseClient
-        .from("corner_kv")
-        .upsert({
-          site_id: siteId,
-          key,
-          value,
-          updated_at: new Date().toISOString()
-        });
+      updateSyncStatus("syncing");
+      let error = null;
+      let normalizedSnapshot = null;
+      if (normalized) {
+        try {
+          normalizedSnapshot = await window.CornerContentRepository.write(key, value);
+        } catch (writeError) {
+          error = writeError;
+        }
+      } else {
+        const response = await supabaseClient
+          .from("corner_kv")
+          .upsert({
+            site_id: siteId,
+            key,
+            value,
+            updated_at: new Date().toISOString()
+          });
+        error = response.error;
+      }
       const pending = pendingRemoteWrites.get(key);
       if (pending?.id === writeId) {
         pendingRemoteWrites.delete(key);
-        if (!error) remoteCache[key] = value;
+        if (!error) {
+          if (normalizedSnapshot) applyContentSnapshot(normalizedSnapshot);
+          else remoteCache[key] = value;
+        }
       }
       if (error) {
         console.warn("Supabase save failed.", error);
-        updateSyncStatus("offline");
-        toast("Saved on this device");
-        return false;
+        const queued = normalized
+          ? await window.CornerOutbox?.queueContent?.(siteId, key, value, error.message || "remote-write-failed")
+          : await window.CornerOutbox?.queueKeyValue?.(siteId, key, value, error.message || "remote-write-failed");
+        updateSyncStatus(queued ? "offline-queued" : "needs-attention");
+        toast(queued ? "Saved offline - will sync automatically" : "This change needs attention");
+        return Boolean(queued);
       } else {
-        updateSyncStatus("online");
+        updateSyncStatus("saved");
         window.CornerNotifications?.fromSharedChange?.(key, value);
+        if (/^pf_(?:game|number|word|same|would|trivia|truth|memory)_/.test(key)) {
+          window.CornerRealtime?.send?.("game-event", { key, source: "corner-kv" });
+        }
         return true;
       }
     },
@@ -209,6 +277,8 @@
           filter: `site_id=eq.${siteId}`
         },
         (payload) => {
+          const changedKey = payload.new?.key || payload.old?.key || "";
+          if (window.CornerContentRepository?.enabled && window.CornerContentRepository.supports(changedKey)) return;
           if (payload.eventType === "DELETE") delete remoteCache[payload.old.key];
           if (payload.new) remoteCache[payload.new.key] = payload.new.value;
           refreshCurrentPage(false);
@@ -358,9 +428,24 @@
   function updateSyncStatus(mode) {
     if (!syncStatusEl) return;
     syncStatusEl.className = `sync-status ${mode}`;
-    if (mode === "online") {
-      syncStatusEl.textContent = "Shared mode";
-      syncStatusEl.title = "Connected to shared Supabase storage";
+    if (["online", "saved"].includes(mode)) {
+      syncStatusEl.textContent = mode === "saved" ? "Saved" : "Shared mode";
+      syncStatusEl.title = "Everything on this device is synced with your shared corner";
+      return;
+    }
+    if (mode === "syncing") {
+      syncStatusEl.textContent = "Syncing";
+      syncStatusEl.title = "Sending your latest changes securely";
+      return;
+    }
+    if (mode === "needs-attention") {
+      syncStatusEl.textContent = "Needs attention";
+      syncStatusEl.title = "One or more changes could not be sent yet";
+      return;
+    }
+    if (mode === "offline-queued") {
+      syncStatusEl.textContent = "Saved offline";
+      syncStatusEl.title = "This change will send automatically when the internet returns";
       return;
     }
     if (mode === "offline") {
@@ -370,6 +455,14 @@
     }
     syncStatusEl.textContent = "Local mode";
   }
+
+  document.addEventListener("corner:sync-state", (event) => {
+    const state = event.detail?.state;
+    if (state === "saved") updateSyncStatus("saved");
+    else if (state === "syncing") updateSyncStatus("syncing");
+    else if (state === "needs-attention") updateSyncStatus("needs-attention");
+    else if (state === "offline") updateSyncStatus(event.detail?.pending ? "offline-queued" : "offline");
+  });
 
   function requirePasscode() {
     if (!passcode || passcode === "change-this-passcode") return Promise.resolve();
@@ -818,7 +911,8 @@
       truth: document.getElementById("truthGamePanel"),
       memory: document.getElementById("memoryGamePanel")
     };
-    const savedIdentity = sessionStorage.getItem("pf_game_player");
+    const accountRole = window.CornerIdentity?.current?.role;
+    const savedIdentity = accountRole || sessionStorage.getItem("pf_game_player") || identity.value;
     identity.value = ["frog", "princess"].includes(savedIdentity) ? savedIdentity : "";
 
     function selectGame(name) {
@@ -841,7 +935,10 @@
       ["frog", "princess"].forEach((player) => {
         const label = document.getElementById(`${player}Presence`);
         const seenAt = Date.parse(shared.get(`pf_presence_${player}`, ""));
-        const online = Number.isFinite(seenAt) && now - seenAt < gamePresenceWindowMs;
+        const realtimeConnected = window.CornerRealtime?.connectionStatus?.() === "connected";
+        const online = realtimeConnected
+          ? window.CornerRealtime.isOnline(player)
+          : Number.isFinite(seenAt) && now - seenAt < gamePresenceWindowMs;
         presence[player] = online;
         const displayName = player === "frog" ? "Frog" : "Princess";
         label.classList.toggle("online", online);
@@ -855,7 +952,10 @@
         renderPresence();
         return;
       }
-      await shared.set(`pf_presence_${identity.value}`, new Date().toISOString());
+      await window.CornerRealtime?.track?.({ page: "game" });
+      if (window.CornerRealtime?.connectionStatus?.() !== "connected") {
+        await shared.set(`pf_presence_${identity.value}`, new Date().toISOString());
+      }
       renderPresence();
       controllers.numberGame?.refresh();
       controllers.wordGame?.refresh();
@@ -872,6 +972,7 @@
       try {
         await heartbeat();
         const connected = await shared.pull(true);
+        await window.CornerMultiplayerV2?.refreshAll?.();
         controllers.numberGame?.refresh();
         controllers.wordGame?.refresh();
         controllers.sameGame?.refresh();
@@ -910,6 +1011,7 @@
       if (!document.hidden) syncGameState();
     };
     syncButton?.addEventListener("click", () => syncGameState(true));
+    document.addEventListener("corner:presence", renderPresence);
     controllers.gameHub = { refresh: renderPresence, heartbeat, sync: syncGameState };
     selectGame(localStorage.getItem("pf_active_game") || "number");
     heartbeat();
@@ -1093,7 +1195,7 @@
     refreshFromStore();
   }
 
-  function initGame() {
+  function initLegacyGame() {
     const roleEl = document.getElementById("gameIdentity");
     const rangeEl = document.getElementById("gameRange");
     const secretEl = document.getElementById("secretNumber");
@@ -1122,7 +1224,7 @@
     let secrets = { frog: null, princess: null };
     let playerStates = { frog: { ...defaultPlayerState }, princess: { ...defaultPlayerState } };
     let startingRound = false;
-    const savedPlayer = sessionStorage.getItem("pf_game_player");
+    const savedPlayer = sessionStorage.getItem("pf_game_player") || roleEl.value;
     roleEl.value = ["frog", "princess"].includes(savedPlayer) ? savedPlayer : "";
 
     function otherPlayer(player) {
@@ -1454,7 +1556,7 @@
     controllers.numberGame = { refresh: refreshFromStore };
     refreshFromStore();
   }
-  function initWordGame() {
+  function initLegacyWordGame() {
     const roleEl = document.getElementById("gameIdentity");
     const lengthEl = document.getElementById("wordLength");
     const secretEl = document.getElementById("secretWord");
@@ -1958,6 +2060,14 @@
 
     let messages = shared.get("pf_messages", []);
     sender.value = sessionStorage.getItem("pf_message_sender") || sessionStorage.getItem("pf_game_player") || "frog";
+    const accountRole = window.CornerIdentity?.current?.role;
+    if (["frog", "princess"].includes(accountRole)) sender.value = accountRole;
+    let typingTimer = null;
+    const typingStatus = document.createElement("p");
+    typingStatus.className = "message-typing-status";
+    typingStatus.hidden = true;
+    typingStatus.setAttribute("aria-live", "polite");
+    form.insertAdjacentElement("beforebegin", typingStatus);
     const formatter = new Intl.DateTimeFormat(undefined, {
       month: "short",
       day: "numeric",
@@ -2014,6 +2124,22 @@
     });
     input.addEventListener("input", () => {
       document.getElementById("messageCount").textContent = String(input.value.length);
+      window.CornerRealtime?.send?.("typing", {
+        active: Boolean(input.value.trim()),
+        area: "messages"
+      });
+      clearTimeout(typingTimer);
+      typingTimer = window.setTimeout(() => {
+        window.CornerRealtime?.send?.("typing", { active: false, area: "messages" });
+      }, 1800);
+    });
+    document.addEventListener("corner:broadcast", (event) => {
+      const detail = event.detail || {};
+      if (detail.event !== "typing" || detail.payload?.area !== "messages") return;
+      if (detail.payload?.from === sender.value) return;
+      const label = detail.payload?.from === "princess" ? "Princess" : "Frog";
+      typingStatus.textContent = `${label} is typing...`;
+      typingStatus.hidden = !detail.payload?.active;
     });
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -2027,6 +2153,7 @@
         createdAt: new Date().toISOString()
       }, ...(Array.isArray(messages) ? messages : [])].slice(0, 100);
       input.value = "";
+      window.CornerRealtime?.send?.("typing", { active: false, area: "messages" });
       document.getElementById("messageCount").textContent = "0";
       await shared.set("pf_messages", messages);
       render();
@@ -2085,7 +2212,15 @@
         ? '<span aria-hidden="true">&times;</span> Finish editing'
         : '<span aria-hidden="true">+</span> Edit letters';
       list.querySelectorAll("textarea").forEach((textarea) => {
-        textarea.readOnly = !editing;
+        const owner = textarea.dataset.key.startsWith("openwhen_derek_") ? "frog" : "princess";
+        const accountRole = window.CornerIdentity?.current?.mode === "account"
+          ? window.CornerIdentity.current.role
+          : null;
+        const canWrite = !accountRole || owner === accountRole;
+        textarea.readOnly = !editing || !canWrite;
+        textarea.closest(".letter-note")?.classList.toggle("is-partner-note", Boolean(accountRole && !canWrite));
+        const clearButton = textarea.closest(".letter-note")?.querySelector(".clear-note");
+        if (clearButton) clearButton.disabled = !editing || !canWrite;
       });
     }
 
@@ -3046,6 +3181,28 @@
     });
     setupLightbox();
     controllers.homeGallery = { refresh() {} };
+  }
+
+  function initGame() {
+    if (!window.CornerMultiplayerV2?.eligible?.()) {
+      initLegacyGame();
+      return;
+    }
+    window.CornerMultiplayerV2.mount("number", { shared, toast, escapeHtml }).then((controller) => {
+      if (controller) controllers.numberGame = controller;
+      else initLegacyGame();
+    });
+  }
+
+  function initWordGame() {
+    if (!window.CornerMultiplayerV2?.eligible?.()) {
+      initLegacyWordGame();
+      return;
+    }
+    window.CornerMultiplayerV2.mount("word", { shared, toast, escapeHtml }).then((controller) => {
+      if (controller) controllers.wordGame = controller;
+      else initLegacyWordGame();
+    });
   }
 
   function refreshCurrentPage(forceFocused = true) {

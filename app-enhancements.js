@@ -125,9 +125,12 @@
   function partnerPresence() {
     const partner = otherRole(identity().role);
     const seenAt = Date.parse(runtime()?.shared?.get(`pf_presence_${partner}`, "") || "");
+    const realtimeConnected = window.CornerRealtime?.connectionStatus?.() === "connected";
     return {
       partner,
-      online: Number.isFinite(seenAt) && Date.now() - seenAt < 70000
+      online: realtimeConnected
+        ? window.CornerRealtime.isOnline(partner)
+        : Number.isFinite(seenAt) && Date.now() - seenAt < 70000
     };
   }
 
@@ -146,7 +149,10 @@
 
   async function heartbeatPresence() {
     if (!window.CornerIdentity?.isAccount() || !runtime()?.shared) return;
-    await runtime().shared.set(`pf_presence_${identity().role}`, new Date().toISOString());
+    await window.CornerRealtime?.track?.({ page: document.body.dataset.page || "unknown" });
+    if (window.CornerRealtime?.connectionStatus?.() !== "connected") {
+      await runtime().shared.set(`pf_presence_${identity().role}`, new Date().toISOString());
+    }
     updateWelcomePresence();
   }
 
@@ -154,6 +160,7 @@
     if (!window.CornerIdentity?.isAccount() || presenceTimer) return;
     heartbeatPresence();
     presenceTimer = window.setInterval(heartbeatPresence, 25000);
+    document.addEventListener("corner:presence", () => updateWelcomePresence());
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) heartbeatPresence();
     });

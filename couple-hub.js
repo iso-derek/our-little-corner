@@ -689,7 +689,10 @@
     document.getElementById("dashboardGreeting").textContent = welcome?.text || (me === "princess" ? "Your soft, pink corner is ready with everything Frog has left for you." : "Your green-and-blue command corner is ready for the next chapter.");
 
     const seenAt = Date.parse(shared().get(`pf_presence_${partner}`, "") || "");
-    const online = Number.isFinite(seenAt) && Date.now() - seenAt < 70000;
+    const realtimeConnected = window.CornerRealtime?.connectionStatus?.() === "connected";
+    const online = realtimeConnected
+      ? window.CornerRealtime.isOnline(partner)
+      : Number.isFinite(seenAt) && Date.now() - seenAt < 70000;
     document.getElementById("dashboardPartner").textContent = online ? `${roleName(partner)} is here now` : `${roleName(partner)} is away`;
     document.getElementById("dashboardPartnerDetail").textContent = online ? "You are sharing this moment live." : "Anything you leave will be waiting for them.";
 
@@ -763,7 +766,9 @@
       const seenAt = Date.parse(shared().get(`pf_presence_${partner}`, "") || "");
       const online = typeof presence?.[partner] === "boolean"
         ? presence[partner]
-        : Number.isFinite(seenAt) && Date.now() - seenAt < 90000;
+        : window.CornerRealtime?.connectionStatus?.() === "connected"
+          ? window.CornerRealtime.isOnline(partner)
+          : Number.isFinite(seenAt) && Date.now() - seenAt < 90000;
       const partnerPill = document.getElementById(`${partner}Presence`);
       partnerPill?.classList.add("partner-presence");
       partnerPill?.insertAdjacentElement("afterend", button);
@@ -843,12 +848,14 @@
     backup.className = "backup-center";
     backup.innerHTML = `
       <p class="eyebrow">Safety copy</p><h3>Private backup</h3>
-      <p>Download your notes, games, memories, captions, plans, movies, and shared settings as one JSON file.</p>
+      <p>Download your notes, memories, plans, movies, ratings, rituals, and shared settings as one JSON file.</p>
       <button class="btn" type="button" data-download-backup>Download backup</button>
-      <small data-backup-status>Preparing an automatic browser copy...</small>`;
+      <small data-backup-status>Checking your data safety status...</small>
+      <small data-server-backup-status></small>`;
     section.insertAdjacentElement("afterend", backup);
     backup.querySelector("[data-download-backup]").addEventListener("click", downloadBackup);
     createAutomaticBackup(backup.querySelector("[data-backup-status]"));
+    renderServerBackupStatus(backup.querySelector("[data-server-backup-status]"));
   }
 
   async function collectBackup() {
@@ -859,7 +866,43 @@
       client.from("corner_notifications").select("kind,title,body,url,actor_role,recipient_role,created_at,read_by").eq("site_id", SITE_ID).order("created_at")
     ]);
     if (valueError || notificationError) throw new Error("The shared data could not be read right now.");
-    return { format: "princess-frog-backup-v1", siteId: SITE_ID, createdAt: new Date().toISOString(), createdBy: role(), values, notifications };
+    let normalizedContent = null;
+    if (window.CornerContentRepository?.enabled) {
+      const result = await window.CornerContentRepository.pull("manual-backup");
+      normalizedContent = result.values;
+    }
+    return {
+      format: "princess-frog-backup-v2",
+      siteId: SITE_ID,
+      createdAt: new Date().toISOString(),
+      createdBy: role(),
+      normalizedContent,
+      legacyValues: values,
+      notifications
+    };
+  }
+
+  async function renderServerBackupStatus(status) {
+    if (!status || !window.CornerContentRepository?.enabled) {
+      if (status) status.textContent = "Server backups activate after the data reliability upgrade is installed.";
+      return;
+    }
+    try {
+      const operations = await window.CornerContentRepository.operationsStatus();
+      const last = operations?.lastBackup;
+      const recycleCount = Number(operations?.recycleBin || 0);
+      if (!last) {
+        status.textContent = `Normalized rows are active. ${recycleCount} recoverable item${recycleCount === 1 ? "" : "s"}; daily server backup is waiting for its first run.`;
+        return;
+      }
+      const date = new Date(last.completedAt || last.startedAt);
+      const when = Number.isNaN(date.getTime()) ? "recently" : new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(date);
+      status.textContent = last.status === "complete"
+        ? `Last private server backup completed ${when}. ${recycleCount} recoverable item${recycleCount === 1 ? "" : "s"}.`
+        : `The last server backup needs attention. Your browser copy is still available.`;
+    } catch {
+      status.textContent = "Server backup status will retry when the connection settles.";
+    }
   }
 
   async function downloadBackup() {

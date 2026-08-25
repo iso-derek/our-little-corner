@@ -1,27 +1,29 @@
 # Apply the latest Princess + Frog upgrade
 
-The website code is ready. Complete this database step before relying on the new private-photo protection.
+The website automatically falls back to its older shared storage until the new database functions exist. Run the SQL files below in order to activate server-controlled games, normalized content, revision history, and recovery.
 
-## Run the security upgrade
+## Supabase SQL order
 
-1. Open your `our-little-corner` project in Supabase.
-2. Open **SQL Editor**.
-3. Select **New query**.
-4. Open `supabase-security-hardening.sql` in this website folder.
-5. Copy the entire file into the editor.
-6. Select **Run**.
-7. `Success. No rows returned` is the expected result.
+1. Open the `our-little-corner` project in Supabase.
+2. Open **SQL Editor** and create a new query for each file.
+3. Run `supabase-security-hardening.sql` if you have not already run it.
+4. Run `supabase/migrations/20260824070000_multiplayer_v2.sql`.
+5. Run `supabase/migrations/20260825080000_content_reliability.sql`.
 
-This keeps the shared database and newly uploaded photos available only to the two linked profiles. It also prevents either browser from changing its assigned Frog or Princess identity.
+For each file, paste the complete contents and select **Run**. `Success. No rows returned` is the expected result. Do not paste multiple files into one query tab.
 
-## Publish
+The content migration copies current letters, memories, chat messages, date ideas, movies, ratings, and rituals out of `corner_kv`. It keeps the old values as a temporary rollback copy.
 
-After the SQL succeeds, run these commands in PowerShell:
+## Daily backups
 
-```powershell
-git -C "C:\Users\derek\Documents\Codex\2026-06-26\files-mentioned-by-the-user-i\outputs" add .
-git -C "C:\Users\derek\Documents\Codex\2026-06-26\files-mentioned-by-the-user-i\outputs" commit -m "Add couple hub, movie shelf, date planner, and security upgrades"
-git -C "C:\Users\derek\Documents\Codex\2026-06-26\files-mentioned-by-the-user-i\outputs" push origin main
-```
+Follow `DATA-RELIABILITY-SETUP.md` to deploy `daily-content-backup`, add the private `BACKUP_CRON_SECRET`, and schedule the daily job. Never put that secret in this project or GitHub.
 
-The live GitHub Pages link stays the same after publishing.
+## Verify
+
+1. Sign in as Frog and open the Game Room once.
+2. Sign in as Princess on a second device.
+3. Delete a temporary memory and restore it through **Recently deleted**.
+4. Rate a movie from each account and confirm both ratings remain visible.
+5. Open the account drawer and check the **Private backup** status.
+
+The live GitHub Pages link stays the same after publishing. A hard refresh may be needed once so the new service worker replaces the previous cache.

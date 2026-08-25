@@ -74,6 +74,17 @@
     window.CornerExperience?.celebrateMatch?.(completedMatch);
   }
 
+  function showReaction(reaction) {
+    if (!reaction?.id || reaction.id === lastReactionId) return;
+    lastReactionId = reaction.id;
+    const stage = document.getElementById("reactionStage");
+    if (!stage) return;
+    stage.textContent = `${reaction.emoji} ${roleName(reaction.from)}`;
+    stage.classList.remove("reaction-pop");
+    requestAnimationFrame(() => stage.classList.add("reaction-pop"));
+    setTimeout(() => stage.classList.remove("reaction-pop"), 2200);
+  }
+
   function renderLobby() {
     const history = shared().get("pf_game_history", []);
     const items = Array.isArray(history) ? history : [];
@@ -120,12 +131,7 @@
 
     const reaction = shared().get("pf_game_reaction", null);
     if (reaction?.id && reaction.id !== lastReactionId && Date.now() - Date.parse(reaction.createdAt) < 12000) {
-      lastReactionId = reaction.id;
-      const stage = document.getElementById("reactionStage");
-      stage.textContent = `${reaction.emoji} ${roleName(reaction.from)}`;
-      stage.classList.remove("reaction-pop");
-      requestAnimationFrame(() => stage.classList.add("reaction-pop"));
-      setTimeout(() => stage.classList.remove("reaction-pop"), 2200);
+      showReaction(reaction);
     }
   }
 
@@ -155,7 +161,7 @@
         return;
       }
       const game = document.getElementById("inviteGame").value;
-      await shared().set("pf_game_invite", {
+      const invite = {
         id: makeId("invite"),
         game,
         label: labels[game],
@@ -163,7 +169,9 @@
         to: otherRole(me),
         status: "sent",
         createdAt: new Date().toISOString()
-      });
+      };
+      await window.CornerRealtime?.send?.("game-invite", invite);
+      await shared().set("pf_game_invite", invite);
       renderLobby();
       runtime().toast(`Invite sent to ${roleName(otherRole(me))}`);
     });
@@ -171,12 +179,15 @@
       button.addEventListener("click", async () => {
         const me = role();
         if (!validRole(me)) return;
-        await shared().set("pf_game_reaction", {
+        const reaction = {
           id: makeId("reaction"),
           from: me,
           emoji: button.dataset.gameReaction,
           createdAt: new Date().toISOString()
-        });
+        };
+        showReaction(reaction);
+        await window.CornerRealtime?.send?.("reaction", reaction);
+        await shared().set("pf_game_reaction", reaction);
         renderLobby();
       });
     });
@@ -738,6 +749,14 @@
     initTruthOrDare();
     initMemoryMatch();
     document.addEventListener("corner:remote-change", refreshAll);
+    document.addEventListener("corner:broadcast", async (event) => {
+      const detail = event.detail || {};
+      if (detail.event === "reaction") showReaction(detail.payload);
+      if (detail.event === "game-invite") {
+        await pull();
+        renderLobby();
+      }
+    });
   }
 
   window.CornerGames = { recordMatch, selectGame, refresh: refreshAll };
