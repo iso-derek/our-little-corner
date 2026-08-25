@@ -81,10 +81,10 @@
       shared: "Unlocks and edits update for both of you."
     },
     gifts: {
-      title: "Gifts Corner",
-      summary: "Keep the thoughtful details behind gifts and surprises in one place.",
-      steps: ["Open a gift to see its date, photo, and note.", "Use edit mode to add or change gift details.", "Write enough context that the memory still makes sense years later."],
-      shared: "Gift entries are part of your private shared archive."
+      title: "The Flower Archive",
+      summary: "A private botanical showroom for every bouquet, its story, and the meaning carried by each bloom.",
+      steps: ["Explore the flower guide to learn the traditional language and care of each bloom.", "Search the shared archive or filter it by colour.", "Select Add flowers to keep a bouquet photo, date, varieties, and the story behind it."],
+      shared: "Both accounts can add and edit bouquets, and the complete archive updates for both of you."
     },
     quotes: {
       title: "Things We Said",

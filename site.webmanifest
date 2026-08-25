@@ -51,6 +51,12 @@
       "short_name": "Dates",
       "url": "./dates.html",
       "icons": [{ "src": "images/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Flower Archive",
+      "short_name": "Flowers",
+      "url": "./gifts.html",
+      "icons": [{ "src": "images/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }

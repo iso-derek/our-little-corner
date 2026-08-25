@@ -370,7 +370,7 @@
       ];
       const secondaryLinks = [
         ["badges.html", "Badges"],
-        ["gifts.html", "Gifts"],
+        ["gifts.html", "Flowers"],
         ["quotes.html", "Things we said"],
         ["love.html", "Love notes"]
       ];
@@ -2516,6 +2516,10 @@
   }
 
   function initGifts() {
+    if (window.PFCornerFlowerArchive?.init) {
+      window.PFCornerFlowerArchive.init({ shared, toast, escapeHtml });
+      return;
+    }
     const grid = document.getElementById("giftGrid");
     const addForm = document.getElementById("giftForm");
     const editToggle = document.getElementById("giftEditToggle");

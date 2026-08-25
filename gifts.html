@@ -4,71 +4,170 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow, noarchive">
-  <meta name="description" content="The gifts and soft surprises Princess and Frog have kept together.">
-  <meta name="theme-color" content="#f6f0e6">
-  <meta property="og:title" content="Gifts Corner | Princess + Frog">
-  <meta property="og:image" content="https://iso-derek.github.io/our-little-corner/images/og-cover.jpg">
-  <title>Gifts Corner | Princess + Frog</title>
+  <meta name="description" content="A private archive of every bouquet, flower meaning, and floral memory shared by Princess and Frog.">
+  <meta name="theme-color" content="#101817">
+  <meta property="og:title" content="The Flower Archive | Princess + Frog">
+  <meta property="og:image" content="https://iso-derek.github.io/our-little-corner/images/flower-theatre-hero.png">
+  <title>The Flower Archive | Princess + Frog</title>
   <link rel="icon" href="images/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
   <link rel="manifest" href="site.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&amp;display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260825-10">
+  <link rel="stylesheet" href="style.css?v=20260825-11">
 </head>
-<body data-page="gifts">
+<body data-page="gifts" class="flower-archive-page">
   <header class="site-header">
     <a class="brand" href="index.html">Princess + Frog</a>
     <nav class="nav">
-      <a href="index.html">Home 🏠</a>
-      <a href="letters.html">Open When Letters 💌</a>
-      <a href="memories.html">Memory Wall 📸</a>
-      <a href="badges.html">Badges 🏆</a>
-      <a href="game.html">Game Room 🎮</a>
-      <a href="movies.html">Movies 🎬</a>
-      <a href="messages.html">Our Chat 💬</a>
-      <a href="gifts.html">Gifts 🎁</a>
-      <a href="quotes.html">Things We Said 🗣️</a>
-      <a href="love.html">Love Notes 💕</a>
+      <a href="index.html">Home</a>
+      <a href="letters.html">Letters</a>
+      <a href="memories.html">Memories</a>
+      <a href="badges.html">Badges</a>
+      <a href="game.html">Play</a>
+      <a href="movies.html">Movies</a>
+      <a href="messages.html">Chat</a>
+      <a href="gifts.html" aria-current="page">Flowers</a>
+      <a href="quotes.html">Things we said</a>
+      <a href="love.html">Love notes</a>
     </nav>
   </header>
 
-  <main class="page">
-    <section class="page-title">
-      <p class="eyebrow">Soft surprises</p>
-      <h1>Gifts Corner 🎁💕</h1>
-      <p>Little things I got for my princess because she deserves softness, surprises, and love.</p>
+  <main class="flower-main">
+    <section class="flower-hero" aria-labelledby="flowerHeroTitle">
+      <img class="flower-hero-art" src="images/flower-theatre-hero.png" alt="A rose, peony, tulip, lily, sunflower, orchid, baby's breath and hydrangea displayed like a botanical collection">
+      <div class="flower-hero-shade"></div>
+      <div class="flower-hero-copy">
+        <p class="flower-overline"><span></span>The private collection · for Princess</p>
+        <h1 id="flowerHeroTitle">Every bouquet<br>means something.</h1>
+        <p class="flower-hero-deck">A living record of every flower she has received, the moment behind it, and the language each bloom carries.</p>
+        <div class="flower-hero-actions">
+          <a class="flower-cta flower-cta-primary" href="#her-collection">View her collection <span aria-hidden="true">↓</span></a>
+          <a class="flower-cta" href="#flower-language">Flower meanings <span aria-hidden="true">↗</span></a>
+        </div>
+      </div>
+      <dl class="flower-hero-stats" aria-label="Flower collection summary">
+        <div><dt id="flowerTotal">00</dt><dd>Bouquets kept</dd></div>
+        <div><dt id="flowerVarieties">00</dt><dd>Varieties collected</dd></div>
+        <div><dt id="flowerLatest">—</dt><dd>Latest flowers</dd></div>
+      </dl>
     </section>
-    <div class="page-toolbar"><button class="manage-toggle" id="giftEditToggle" type="button" aria-pressed="false"><span aria-hidden="true">+</span> Edit gifts</button></div>
-    <form class="collection-composer" id="giftForm" hidden>
-      <label>Gift name
-        <input id="newGiftTitle" type="text" maxlength="100" placeholder="Name this gift" required>
-      </label>
-      <label>Date
-        <input id="newGiftDate" type="text" maxlength="50" placeholder="Add a date">
-      </label>
-      <button class="btn primary" type="submit">Add gift</button>
-    </form>
-    <section class="gift-grid" id="giftGrid"></section>
+
+    <section class="flower-language" id="flower-language" aria-labelledby="flowerLanguageTitle">
+      <div class="flower-section-head">
+        <div>
+          <p class="flower-overline flower-overline-dark"><span></span>The language of flowers</p>
+          <h2 id="flowerLanguageTitle">Know what the bloom is saying.</h2>
+        </div>
+        <p>Meanings come from long-standing flower traditions and can change across cultures, colours, and the story you give them.</p>
+      </div>
+
+      <div class="flower-specimen-selector" id="flowerGuideTabs" role="tablist" aria-label="Choose a flower"></div>
+      <article class="flower-spotlight" id="flowerSpotlight" aria-live="polite"></article>
+    </section>
+
+    <section class="flower-collection" id="her-collection" aria-labelledby="flowerCollectionTitle">
+      <div class="flower-section-head flower-collection-head">
+        <div>
+          <p class="flower-overline flower-overline-light"><span></span>Her bouquet archive</p>
+          <h2 id="flowerCollectionTitle">Flowers I got for my Princess.</h2>
+        </div>
+        <button class="flower-add-button" id="giftEditToggle" type="button" aria-expanded="false" aria-controls="giftForm">
+          <span aria-hidden="true">+</span> Add flowers
+        </button>
+      </div>
+
+      <form class="flower-composer" id="giftForm" hidden>
+        <div class="flower-composer-head">
+          <div><span class="flower-composer-step">New archive entry</span><h3 id="flowerFormTitle">Add a bouquet</h3></div>
+          <button class="flower-icon-button" id="flowerFormClose" type="button" aria-label="Close flower form">×</button>
+        </div>
+        <input id="flowerEditingId" type="hidden">
+        <div class="flower-form-grid">
+          <label class="flower-field flower-field-wide">Bouquet name
+            <input id="newGiftTitle" type="text" maxlength="100" placeholder="Give this one a title" required>
+          </label>
+          <label class="flower-field">Date given
+            <input id="newGiftDate" type="date">
+          </label>
+          <label class="flower-field">Occasion
+            <select id="newGiftOccasion">
+              <option value="Just because">Just because</option>
+              <option value="Date">Date</option>
+              <option value="Birthday">Birthday</option>
+              <option value="Anniversary">Anniversary</option>
+              <option value="Celebration">Celebration</option>
+              <option value="A big question">A big question</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+          <label class="flower-field flower-field-wide">Flowers included
+            <input id="newGiftTypes" type="text" maxlength="180" placeholder="Roses, tulips, peonies…">
+          </label>
+          <label class="flower-field">Colour story
+            <select id="newGiftPalette">
+              <option value="Mixed">Mixed</option>
+              <option value="Pink">Pink</option>
+              <option value="Red">Red</option>
+              <option value="White">White</option>
+              <option value="Yellow">Yellow</option>
+              <option value="Purple">Purple</option>
+              <option value="Pastel">Pastel</option>
+            </select>
+          </label>
+          <label class="flower-field">Bouquet photo
+            <input id="newGiftPhoto" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
+          </label>
+          <label class="flower-field flower-field-full">The story behind it
+            <textarea id="newGiftNote" maxlength="600" placeholder="Where you were, why you chose them, or what you want her to remember."></textarea>
+          </label>
+        </div>
+        <p class="flower-form-state" id="flowerFormState" role="status" aria-live="polite"></p>
+        <div class="flower-form-actions">
+          <button class="flower-cta" id="flowerFormCancel" type="button">Cancel</button>
+          <button class="flower-cta flower-cta-primary" type="submit">Keep in the archive</button>
+        </div>
+      </form>
+
+      <div class="flower-collection-tools">
+        <label class="flower-search"><span aria-hidden="true">⌕</span><span class="sr-only">Search the flower archive</span><input id="flowerSearch" type="search" placeholder="Search bouquets or flowers"></label>
+        <label class="flower-filter"><span class="sr-only">Filter by colour</span><select id="flowerPaletteFilter"><option value="all">Every colour</option><option value="Pink">Pink</option><option value="Red">Red</option><option value="White">White</option><option value="Yellow">Yellow</option><option value="Purple">Purple</option><option value="Pastel">Pastel</option><option value="Mixed">Mixed</option></select></label>
+        <label class="flower-filter"><span class="sr-only">Sort bouquets</span><select id="flowerSort"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="name">By name</option></select></label>
+      </div>
+
+      <section class="flower-passport" aria-labelledby="flowerPassportTitle">
+        <div><p>Collection passport</p><h3 id="flowerPassportTitle"><span id="flowerPassport">0 of 8</span> signature flowers discovered</h3></div>
+        <div class="flower-passport-track" aria-hidden="true"><span id="flowerPassportBar"></span></div>
+        <div class="flower-passport-stamps" id="flowerPassportStamps"></div>
+      </section>
+
+      <section class="flower-ledger" id="giftGrid" aria-live="polite"></section>
+    </section>
+
+    <section class="flower-closing-note">
+      <p class="flower-overline flower-overline-light"><span></span>The next chapter</p>
+      <blockquote>“The flowers fade. The fact that you thought of her does not.”</blockquote>
+      <p>The archive is ready for every bouquet still to come.</p>
+    </section>
   </main>
 
-  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Gift photo viewer" aria-hidden="true">
-    <button class="lightbox-close" type="button" aria-label="Close photo viewer">&times;</button>
-    <button class="lightbox-nav lightbox-prev" type="button" aria-label="Previous photo">&larr;</button>
-    <figure><img src="" alt=""><figcaption><p></p><span class="lightbox-count"></span></figcaption></figure>
-    <button class="lightbox-nav lightbox-next" type="button" aria-label="Next photo">&rarr;</button>
-  </div>
+  <dialog class="flower-photo-dialog" id="flowerPhotoDialog">
+    <button class="flower-dialog-close" type="button" aria-label="Close photo">×</button>
+    <img alt="">
+    <div><p></p><h2></h2><span></span></div>
+  </dialog>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=20260824-1"></script>
   <script src="auth.js?v=20260824-2"></script>
-  <script src="content-repository.js?v=20260825-1"></script>
+  <script src="content-repository.js?v=20260825-2"></script>
   <script src="offline-outbox.js?v=20260825-2"></script>
   <script src="recycle-bin.js?v=20260825-1"></script>
   <script src="corner-realtime.js?v=20260824-1"></script>
-  <script src="script.js?v=20260825-10"></script>
+  <script src="flower-archive.js?v=20260825-1"></script>
+  <script src="script.js?v=20260825-11"></script>
   <script src="app-enhancements.js?v=20260824-6"></script>
   <script src="games-plus.js?v=20260824-6"></script>
   <script src="couple-hub.js?v=20260825-7"></script>

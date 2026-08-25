@@ -1,4 +1,4 @@
-const CACHE_NAME = "pf-corner-v21";
+const CACHE_NAME = "pf-corner-v22";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -13,14 +13,15 @@ const APP_SHELL = [
   "./quotes.html",
   "./love.html",
   "./offline.html",
-  "./style.css?v=20260825-10",
+  "./style.css?v=20260825-11",
   "./auth.js?v=20260824-2",
-  "./content-repository.js?v=20260825-1",
+  "./content-repository.js?v=20260825-2",
   "./offline-outbox.js?v=20260825-2",
   "./recycle-bin.js?v=20260825-1",
   "./corner-realtime.js?v=20260824-1",
   "./multiplayer-v2.js?v=20260824-1",
-  "./script.js?v=20260825-10",
+  "./flower-archive.js?v=20260825-1",
+  "./script.js?v=20260825-11",
   "./app-enhancements.js?v=20260824-6",
   "./games-plus.js?v=20260824-6",
   "./couple-hub.js?v=20260825-7",
@@ -32,7 +33,11 @@ const APP_SHELL = [
   "./images/us-bike.jpg",
   "./images/us-mirror.jpg",
   "./images/us-food-date.jpg",
-  "./images/us-neon-mirror.jpg"
+  "./images/us-neon-mirror.jpg",
+  "./images/flower-theatre-hero.png",
+  "./images/flowers-for-my-princess.png",
+  "./images/june21-flowers.png",
+  "./images/memory5.jpeg"
 ];
 
 self.addEventListener("install", (event) => {

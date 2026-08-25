@@ -3,6 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const CONTENT_TABLES = [
   "corner_letters",
   "corner_memories",
+  "corner_flower_gifts",
   "corner_messages",
   "corner_dates",
   "corner_date_availability",

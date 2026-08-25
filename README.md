@@ -1,6 +1,6 @@
 # Princess + Frog: Our Little Corner
 
-An account-gated shared editorial website for memories, letters, games, messages, gifts, badges, quotes, love notes, recordings, and notifications. It is a static installable web app hosted on GitHub Pages, with Supabase providing account identity, protected shared records, realtime updates, private media storage, and notification delivery.
+An account-gated shared editorial website for memories, letters, games, messages, flowers, badges, quotes, love notes, recordings, and notifications. It is a static installable web app hosted on GitHub Pages, with Supabase providing account identity, protected shared records, realtime updates, private media storage, and notification delivery.
 
 ## Preview locally
 
@@ -14,9 +14,9 @@ Then open `http://127.0.0.1:4180/`. A local server is preferred to opening the H
 
 ## Edit the site
 
-- Use the visible `Edit` control on Letters, Memories, Badges, Gifts, Things We Said, and Love Notes.
+- Use the visible `Edit` control on Letters, Memories, Badges, Things We Said, and Love Notes. The Flower Archive has its own always-available bouquet form and edit controls.
 - Memory items can be added, edited, deleted, and moved up or down while edit mode is open.
-- Uploaded memory and gift photos are saved in Supabase Storage.
+- Uploaded memory and flower photos are saved in Supabase Storage.
 - The Game Room and Our Chat update through the same shared Supabase project.
 - Static page introductions and the 21 June story are edited directly in their HTML files.
 
@@ -27,6 +27,8 @@ Then open `http://127.0.0.1:4180/`. A local server is preferred to opening the H
 The production site uses one permanent Frog account and one permanent Princess account. Follow `ACCOUNT-SETUP.md` before deploying the authenticated upgrade. Localhost keeps the passcode preview unless `localAccountPreview` is enabled.
 
 `supabase-auth-upgrade.sql` changes the original anonymous policies to authenticated couple-only Row Level Security. Do not publish that upgrade until both Auth users and both `couple_profiles` rows exist.
+
+`supabase/migrations/20260825120000_flower_archive.sql` promotes the Flower Archive from its compatible shared-storage fallback to a dedicated, revisioned, soft-delete table. Run it in the Supabase SQL Editor when deploying the archive backend.
 
 The public Supabase browser key is expected in frontend code. Account passwords, the Supabase service-role key, and the VAPID private key must never be committed.
 

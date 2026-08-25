@@ -8,6 +8,7 @@
     "pf_movie_items",
     "pf_ritual_completed_days"
   ];
+  const FLOWER_KEY = "pf_flower_gifts";
   const SUPPORTED_PATTERNS = [
     /^openwhen_(?:derek|princess)_.+$/,
     /^pf_memory_.+_(?:date|caption|photo)$/,
@@ -31,9 +32,12 @@
   let channel = null;
   let pullPromise = null;
   let refreshTimer = null;
+  let flowerBackendEnabled = false;
 
   function supports(key) {
-    return SUPPORTED_KEYS.includes(key) || SUPPORTED_PATTERNS.some((pattern) => pattern.test(key));
+    return SUPPORTED_KEYS.includes(key)
+      || (key === FLOWER_KEY && flowerBackendEnabled)
+      || SUPPORTED_PATTERNS.some((pattern) => pattern.test(key));
   }
 
   function emit(values, source = "server") {
@@ -61,7 +65,17 @@
         if (isMissingBackend(error)) enabled = false;
         throw error;
       }
-      return { enabled: true, values: emit(data || {}, source) };
+      const values = data && typeof data === "object" && !Array.isArray(data) ? { ...data } : {};
+      const flowerResponse = await client.rpc("flower_archive_snapshot");
+      if (!flowerResponse.error) {
+        flowerBackendEnabled = true;
+        values[FLOWER_KEY] = Array.isArray(flowerResponse.data) ? flowerResponse.data : [];
+      } else if (isMissingBackend(flowerResponse.error)) {
+        flowerBackendEnabled = false;
+      } else {
+        console.warn("Flower archive refresh failed.", flowerResponse.error);
+      }
+      return { enabled: true, values: emit(values, source) };
     })();
     try {
       return await pullPromise;
@@ -72,6 +86,14 @@
 
   async function write(key, value, options = {}) {
     if (!enabled || !client || !supports(key)) throw new Error("Normalized content backend is unavailable");
+    if (key === FLOWER_KEY) {
+      const { data, error } = await client.rpc("flower_archive_replace", { p_items: value });
+      if (error) throw error;
+      const values = { ...snapshot, [FLOWER_KEY]: Array.isArray(data) ? data : [] };
+      emit(values, options.fromOutbox ? "outbox" : "write");
+      if (!options.fromOutbox) window.CornerRealtime?.send?.("content-event", { key });
+      return values;
+    }
     const { data, error } = await client.rpc("content_write", { p_key: key, p_value: value });
     if (error) throw error;
     emit(data || {}, options.fromOutbox ? "outbox" : "write");
@@ -120,6 +142,14 @@
         filter: `site_id=eq.${siteId}`
       }, () => scheduleRefresh("realtime"));
     });
+    if (flowerBackendEnabled) {
+      channel.on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "corner_flower_gifts",
+        filter: `site_id=eq.${siteId}`
+      }, () => scheduleRefresh("realtime"));
+    }
     channel.subscribe();
   }
 
