@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const CONTENT_TABLES = [
+const SITE_SCOPED_TABLES = [
   "corner_letters",
   "corner_memories",
   "corner_flower_gifts",
@@ -11,10 +11,10 @@ const CONTENT_TABLES = [
   "corner_ratings",
   "corner_rituals",
   "game_sessions",
-  "game_players",
-  "game_moves",
   "game_scores"
 ] as const;
+
+const SESSION_SCOPED_TABLES = ["game_players", "game_moves"] as const;
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -62,8 +62,23 @@ Deno.serve(async (request) => {
     try {
       const tables: Record<string, unknown[]> = {};
       const rowCounts: Record<string, number> = {};
-      for (const table of CONTENT_TABLES) {
+      for (const table of SITE_SCOPED_TABLES) {
         const { data, error } = await admin.from(table).select("*").eq("site_id", siteId);
+        if (error) throw new Error(`${table}: ${error.message}`);
+        tables[table] = data || [];
+        rowCounts[table] = data?.length || 0;
+      }
+
+      const sessionIds = (tables.game_sessions || [])
+        .map((session) => (session as { id?: string }).id)
+        .filter((id): id is string => Boolean(id));
+      for (const table of SESSION_SCOPED_TABLES) {
+        if (!sessionIds.length) {
+          tables[table] = [];
+          rowCounts[table] = 0;
+          continue;
+        }
+        const { data, error } = await admin.from(table).select("*").in("session_id", sessionIds);
         if (error) throw new Error(`${table}: ${error.message}`);
         tables[table] = data || [];
         rowCounts[table] = data?.length || 0;
