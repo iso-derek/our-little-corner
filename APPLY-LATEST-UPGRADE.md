@@ -8,7 +8,8 @@ The website automatically falls back to its older shared storage until the new d
 2. Open **SQL Editor** and create a new query for each file.
 3. Run `supabase-security-hardening.sql` if you have not already run it.
 4. Run `supabase/migrations/20260824070000_multiplayer_v2.sql`.
-5. Run `supabase/migrations/20260825080000_content_reliability.sql`.
+5. Run `supabase/migrations/20260825160000_multiplayer_v3.sql`.
+6. Run `supabase/migrations/20260825080000_content_reliability.sql`.
 
 For each file, paste the complete contents and select **Run**. `Success. No rows returned` is the expected result. Do not paste multiple files into one query tab.
 
@@ -22,8 +23,9 @@ Follow `DATA-RELIABILITY-SETUP.md` to deploy `daily-content-backup`, add the pri
 
 1. Sign in as Frog and open the Game Room once.
 2. Sign in as Princess on a second device.
-3. Delete a temporary memory and restore it through **Recently deleted**.
-4. Rate a movie from each account and confirm both ratings remain visible.
-5. Open the account drawer and check the **Private backup** status.
+3. Finish a Number duel, request a rematch, and confirm the fresh round starts only after the other person accepts.
+4. Delete a temporary memory and restore it through **Recently deleted**.
+5. Rate a movie from each account and confirm both ratings remain visible.
+6. Open the account drawer and check the **Private backup** status.
 
 The live GitHub Pages link stays the same after publishing. A hard refresh may be needed once so the new service worker replaces the previous cache.

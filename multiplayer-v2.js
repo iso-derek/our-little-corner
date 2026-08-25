@@ -49,6 +49,9 @@
     if (message.includes("wrong word length")) return "Use the selected number of letters.";
     if (message.includes("outside the selected range")) return "That number is outside this round's range.";
     if (message.includes("already over")) return "That round has finished. Start a fresh one.";
+    if (message.includes("already in progress")) return "A round is already live. Request a restart together.";
+    if (message.includes("already locked")) return "Your secret is already locked for this round.";
+    if (message.includes("Secret locking has closed")) return "Secret locking has closed for this round.";
     return message;
   }
 
@@ -104,7 +107,7 @@
     if (!heading || heading.querySelector(".game-backend-badge")) return;
     const badge = document.createElement("span");
     badge.className = "game-backend-badge";
-    badge.innerHTML = '<i aria-hidden="true"></i> Server-verified turns';
+    badge.innerHTML = '<i aria-hidden="true"></i> Server-verified play';
     badge.title = "Secrets and turn checks are handled privately by Supabase";
     heading.appendChild(badge);
   }
@@ -163,7 +166,7 @@
     let failure = "";
     let recordedWinnerSession = null;
 
-    elements.panel.dataset.backend = "v2";
+    elements.panel.dataset.backend = "v3";
     document.getElementById("gameIdentity").value = me;
     addBackendBadge(elements.panel);
 
@@ -220,6 +223,7 @@
       const currentPlayer = players()[role];
       const isHere = online(role, tools.shared);
       if (!currentSession) return isHere ? "Ready" : "Away";
+      if (currentPlayer?.rematch_requested) return `Rematch requested${isHere ? "" : " · away"}`;
       if (finished()) return currentSession.winner === role ? "Won 🎉" : "Round over";
       if (bothReady()) {
         return `${currentSession.current_turn === role ? "Your move" : "Waiting"} · ${currentPlayer?.attempts || 0} guesses${isHere ? "" : " · away"}`;
@@ -233,6 +237,9 @@
       const currentPlayers = players();
       const mine = currentPlayers[me];
       const partner = otherRole(me);
+      const partnerPlayer = currentPlayers[partner];
+      const mineRequested = Boolean(mine?.rematch_requested);
+      const partnerRequested = Boolean(partnerPlayer?.rematch_requested);
       const ready = bothReady();
       const winner = currentSession?.winner || null;
       const turn = currentSession?.current_turn;
@@ -269,10 +276,14 @@
         ? "Updating round..."
         : !currentSession
           ? `Start ${gameType === "number" ? "duel" : "word duel"}`
-          : winner
-            ? "Play again"
-            : "Restart round";
-      elements.start.disabled = busy || loading;
+          : mineRequested
+            ? "Waiting for partner"
+            : partnerRequested
+              ? "Accept rematch"
+              : winner
+                ? "Request rematch"
+                : "Request restart";
+      elements.start.disabled = busy || loading || mineRequested;
       elements.lock.disabled = busy || loading || !currentSession || Boolean(mine?.ready) || Boolean(winner);
       elements.submit.disabled = busy || loading || !ready || Boolean(winner) || turn !== me;
       elements.resetScores.disabled = busy || loading;
@@ -288,10 +299,14 @@
         elements.result.textContent = failure;
       } else if (!currentSession) {
         elements.result.textContent = "Either player can start a fresh duel.";
+      } else if (mineRequested) {
+        elements.result.textContent = `Rematch requested. Waiting for ${PLAYER_LABELS[partner]} to accept.`;
+      } else if (partnerRequested) {
+        elements.result.textContent = `${PLAYER_LABELS[partner]} wants a fresh round. Tap Accept rematch when you are ready.`;
       } else if (winner) {
         elements.result.textContent = winner === me
-          ? `You guessed ${PLAYER_LABELS[partner]}'s ${gameType === "number" ? "number" : "word"} first. Tap Play again for a rematch 🎉`
-          : `${PLAYER_LABELS[winner]} won this round. Tap Play again for a rematch.`;
+          ? `You guessed ${PLAYER_LABELS[partner]}'s ${gameType === "number" ? "number" : "word"} first. Request a rematch when you are ready 🎉`
+          : `${PLAYER_LABELS[winner]} won this round. Request a rematch when you are ready.`;
       } else if (!ready) {
         elements.result.textContent = `Waiting for both secret ${gameType === "number" ? "numbers" : "words"} to be locked.`;
       } else if (latestMove) {
@@ -403,21 +418,16 @@
     elements.start.addEventListener("click", async () => {
       const currentSession = session();
       if (currentSession && !finished()) {
-        const confirmed = window.confirm(`Restart this ${gameType === "number" ? "number" : "word"} duel? Both secrets and all current guesses will be cleared.`);
+        const confirmed = window.confirm(`Request a restart for this ${gameType === "number" ? "number" : "word"} duel? The round changes only after your partner accepts.`);
         if (!confirmed) return;
       }
       const selected = Number(elements.option.value);
-      const currentConfig = currentSession?.config || {};
-      const sameConfig = gameType === "number"
-        ? Number(currentConfig.range) === selected
-        : Number(currentConfig.length) === selected;
-      const useRematch = Boolean(finished() && sameConfig);
       await call(
-        useRematch ? "request_game_rematch" : "start_game",
-        useRematch
+        currentSession ? "request_game_rematch" : "start_game",
+        currentSession
           ? { p_game_type: gameType }
           : { p_game_type: gameType, p_config: gameType === "number" ? { range: selected } : { length: selected } },
-        "Fresh server-verified round ready"
+        currentSession ? "Rematch request updated" : "Fresh server-verified round ready"
       );
       elements.secret.value = "";
       elements.guess.value = "";
@@ -497,7 +507,7 @@
     });
 
     render();
-    return { refresh, render, backend: "v2" };
+    return { refresh, render, backend: "v3" };
   }
 
   async function mount(gameType, tools) {
@@ -515,7 +525,7 @@
           return null;
         }
         initialState = {
-          backendVersion: 2,
+          backendVersion: 3,
           myRole: identity().role,
           session: null,
           players: [],

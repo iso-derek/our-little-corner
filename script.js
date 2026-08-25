@@ -55,6 +55,12 @@
     localStorage.setItem(key, JSON.stringify(value));
   }
 
+  function cloneForQueue(value) {
+    if (value === undefined) return undefined;
+    if (typeof structuredClone === "function") return structuredClone(value);
+    return JSON.parse(JSON.stringify(value));
+  }
+
   function applyContentSnapshot(values) {
     if (!values || typeof values !== "object" || Array.isArray(values)) return;
     const nextKeys = new Set(Object.keys(values));
@@ -93,6 +99,7 @@
       subscribeToRemoteChanges();
       const pollDelay = page === "game" ? 8000 : page === "messages" ? 4000 : 10000;
       window.setInterval(async () => {
+        if (window.CornerRealtime?.connectionStatus?.() === "connected") return;
         if (await this.pull()) refreshCurrentPage(false);
       }, pollDelay);
     },
@@ -150,17 +157,18 @@
       return localGet(key, fallback);
     },
     async set(key, value) {
-      localSet(key, value);
-      if (!supabaseClient) return true;
       const normalized = Boolean(
         window.CornerContentRepository?.enabled
         && window.CornerContentRepository.supports(key)
       );
+      const baseValue = cloneForQueue(this.get(key, undefined));
+      localSet(key, value);
+      if (!supabaseClient) return true;
       if (!navigator.onLine) {
         const queued = normalized
-          ? await window.CornerOutbox?.queueContent?.(siteId, key, value, "browser-offline")
-          : await window.CornerOutbox?.queueKeyValue?.(siteId, key, value, "browser-offline");
-        updateSyncStatus(queued ? "offline-queued" : "needs-attention");
+          ? await window.CornerOutbox?.queueContent?.(siteId, key, value, "browser-offline", { baseValue })
+          : await window.CornerOutbox?.queueKeyValue?.(siteId, key, value, "browser-offline", { baseValue });
+        updateSyncStatus(queued ? "offline-queued" : "needs-attention", { pending: queued ? await window.CornerOutbox?.pendingCount?.() : 0 });
         return Boolean(queued);
       }
       const writeId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -197,9 +205,9 @@
       if (error) {
         console.warn("Supabase save failed.", error);
         const queued = normalized
-          ? await window.CornerOutbox?.queueContent?.(siteId, key, value, error.message || "remote-write-failed")
-          : await window.CornerOutbox?.queueKeyValue?.(siteId, key, value, error.message || "remote-write-failed");
-        updateSyncStatus(queued ? "offline-queued" : "needs-attention");
+          ? await window.CornerOutbox?.queueContent?.(siteId, key, value, error.message || "remote-write-failed", { baseValue })
+          : await window.CornerOutbox?.queueKeyValue?.(siteId, key, value, error.message || "remote-write-failed", { baseValue });
+        updateSyncStatus(queued ? "offline-queued" : "needs-attention", { pending: queued ? await window.CornerOutbox?.pendingCount?.() : 0 });
         toast(queued ? "Saved offline - will sync automatically" : "This change needs attention");
         return Boolean(queued);
       } else {
@@ -425,8 +433,9 @@
     }
   }
 
-  function updateSyncStatus(mode) {
+  function updateSyncStatus(mode, detail = {}) {
     if (!syncStatusEl) return;
+    const pending = Number(detail.pending || 0);
     syncStatusEl.className = `sync-status ${mode}`;
     if (["online", "saved"].includes(mode)) {
       syncStatusEl.textContent = mode === "saved" ? "Saved" : "Shared mode";
@@ -434,17 +443,17 @@
       return;
     }
     if (mode === "syncing") {
-      syncStatusEl.textContent = "Syncing";
+      syncStatusEl.textContent = pending ? `Syncing ${pending}` : "Syncing";
       syncStatusEl.title = "Sending your latest changes securely";
       return;
     }
     if (mode === "needs-attention") {
-      syncStatusEl.textContent = "Needs attention";
-      syncStatusEl.title = "One or more changes could not be sent yet";
+      syncStatusEl.textContent = pending ? `Needs attention (${pending})` : "Needs attention";
+      syncStatusEl.title = "A shared change needs review because both of you edited it while a device was offline";
       return;
     }
     if (mode === "offline-queued") {
-      syncStatusEl.textContent = "Saved offline";
+      syncStatusEl.textContent = pending ? `Saved offline (${pending})` : "Saved offline";
       syncStatusEl.title = "This change will send automatically when the internet returns";
       return;
     }
@@ -458,10 +467,10 @@
 
   document.addEventListener("corner:sync-state", (event) => {
     const state = event.detail?.state;
-    if (state === "saved") updateSyncStatus("saved");
-    else if (state === "syncing") updateSyncStatus("syncing");
-    else if (state === "needs-attention") updateSyncStatus("needs-attention");
-    else if (state === "offline") updateSyncStatus(event.detail?.pending ? "offline-queued" : "offline");
+    if (state === "saved") updateSyncStatus("saved", event.detail);
+    else if (state === "syncing") updateSyncStatus("syncing", event.detail);
+    else if (state === "needs-attention") updateSyncStatus("needs-attention", event.detail);
+    else if (state === "offline") updateSyncStatus(event.detail?.pending ? "offline-queued" : "offline", event.detail);
   });
 
   function requirePasscode() {
@@ -953,13 +962,16 @@
         return;
       }
       await window.CornerRealtime?.track?.({ page: "game" });
-      if (window.CornerRealtime?.connectionStatus?.() !== "connected") {
+      const realtimeConnected = window.CornerRealtime?.connectionStatus?.() === "connected";
+      if (!realtimeConnected) {
         await shared.set(`pf_presence_${identity.value}`, new Date().toISOString());
       }
       renderPresence();
-      controllers.numberGame?.refresh();
-      controllers.wordGame?.refresh();
-      controllers.sameGame?.refresh();
+      if (!realtimeConnected) {
+        controllers.numberGame?.refresh();
+        controllers.wordGame?.refresh();
+        controllers.sameGame?.refresh();
+      }
     }
 
     async function syncGameState(showConfirmation = false) {
@@ -1008,7 +1020,9 @@
     });
 
     const wakeHeartbeat = () => {
-      if (!document.hidden) syncGameState();
+      if (document.hidden) return;
+      if (window.CornerRealtime?.connectionStatus?.() === "connected") heartbeat();
+      else syncGameState();
     };
     syncButton?.addEventListener("click", () => syncGameState(true));
     document.addEventListener("corner:presence", renderPresence);
@@ -1018,7 +1032,7 @@
     window.addEventListener("focus", wakeHeartbeat);
     window.addEventListener("online", wakeHeartbeat);
     document.addEventListener("visibilitychange", wakeHeartbeat);
-    setInterval(wakeHeartbeat, 15000);
+    setInterval(wakeHeartbeat, 45000);
   }
 
   function initSameGame() {

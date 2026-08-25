@@ -170,8 +170,8 @@
         status: "sent",
         createdAt: new Date().toISOString()
       };
-      await window.CornerRealtime?.send?.("game-invite", invite);
       await shared().set("pf_game_invite", invite);
+      await window.CornerRealtime?.send?.("game-invite", invite);
       renderLobby();
       runtime().toast(`Invite sent to ${roleName(otherRole(me))}`);
     });
